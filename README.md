@@ -54,7 +54,7 @@ Certifique-se de possuir instalado em sua distribuição Ubuntu no WSL:
 
 1. **Clonar o Repositório:**
 ```bash
-git clone [https://github.com/DeviAlison/muzevents.git](https://github.com/DeviAlison/muzevents.git)
+git clone [https://github.com/DeviAlison/event-flow.git](https://github.com/DeviAlison/event-flow.git)
 cd eventflow
 
 ```
