@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation"; 
+import Image from "next/image"; 
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -16,6 +17,7 @@ export default function Login() {
 
     setCarregando(true); 
     setMensagemErro(""); 
+
     setTimeout(() => {
       if (email === "admin@teste.com" && senha === "123456") {
         setCarregando(false); 
@@ -25,6 +27,7 @@ export default function Login() {
         setMensagemErro("Erro: E-mail ou senha incorretos!"); 
         setEmail(""); 
         setSenha(""); 
+
         setTimeout(() => {
           setMensagemErro("");
         }, 4000);
@@ -33,33 +36,44 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 relative overflow-hidden">
-      
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Acesse sua conta</h2>
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 relative overflow-hidden">
+      <div className="w-full max-w-md bg-slate-50 rounded-2xl shadow-2xl shadow-violet-900/20 p-8 pt-6 border border-slate-200">
+        
+        <div className="flex justify-center mb-0">
+          <Image 
+            src="/logo.png" 
+            alt="Logo Event Flow" 
+            width={200} 
+            height={200} 
+            priority
+            className="object-contain"
+          />
+        </div>
+
+        <h2 className="text-2xl font-bold text-center text-slate-900 mb-6 mt-2">Acesse sua conta</h2>
 
         <form onSubmit={fazerLogin} className="flex flex-col gap-5">
           
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">E-mail</label>
+            <label className="block text-sm font-medium text-slate-900 mb-1">E-mail</label>
             <input
               type="email"
               required
               disabled={carregando}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors disabled:opacity-50"
-              placeholder="Insira seu Email"
+              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50"
+              placeholder="Insira seu e-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)} 
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Senha</label>
+            <label className="block text-sm font-medium text-slate-900 mb-1">Senha</label>
             <input
               type="password"
               required
               disabled={carregando}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors disabled:opacity-50"
+              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50"
               placeholder="Insira sua senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)} 
@@ -68,7 +82,7 @@ export default function Login() {
           
           <button
             type="submit"
-            className="w-full flex items-center justify-center py-2.5 px-4 bg-indigo-500 hover:bg-indigo-800 cursor-pointer text-white font-semibold rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+            className="w-full flex items-center justify-center py-2.5 px-4 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-600 hover:opacity-90 cursor-pointer text-white font-semibold rounded-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed mt-2 shadow-md shadow-violet-500/30"
             disabled={carregando}
           >
             {carregando ? (
