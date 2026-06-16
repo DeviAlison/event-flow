@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      # Espelha a sua pasta atual (.) para dentro da pasta /app do container
+      - .:/app
+      # Protege a node_modules instalada no container (Passo 4 do seu Dockerfile)
+      # para não ser sobrescrita pela pasta do seu computador local
+      - /app/node_modules
+    command: npm run dev
