@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [eventos, setEventos] = useState([]);
   const [paginacao, setPaginacao] = useState({ pagina: 1, qntd_item_pag: 30 });
   const [loading, setLoading] = useState(true);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   
   // Estados para os filtros e controle de página
   const [search, setSearch] = useState("");
@@ -106,11 +107,23 @@ export default function Dashboard() {
   // Heurística de fim de página: se o backend enviou menos itens do que o limite, a página atual é a última
   const ehUltimaPagina = eventos.length < paginacao.qntd_item_pag;
 
+  const gridColumns = sidebarVisible ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-4";
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-6 flex justify-center font-sans">
-      <div className="w-full max-w-[1400px] flex gap-6 h-[calc(100vh-3rem)]">
-        
-        <Sidebar />
+      <div className="w-full max-w-[1400px] flex gap-6 h-[calc(100vh-3rem)] relative">
+        <Sidebar visible={sidebarVisible} onToggleSidebar={() => setSidebarVisible(false)} />
+
+        {!sidebarVisible && (
+          <button
+            type="button"
+            onClick={() => setSidebarVisible(true)}
+            className="fixed left-4 top-4 z-20 inline-flex items-center justify-center w-12 h-12 rounded-full bg-white border border-slate-200 shadow-lg text-slate-700 hover:bg-slate-50 transition-colors"
+            aria-label="Abrir menu"
+          >
+            <i className="bi bi-list text-xl"></i>
+          </button>
+        )}
 
         {/* Adicionado 'flex flex-col justify-between' para empurrar a paginação para o rodapé */}
         <main className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-8 overflow-y-auto flex flex-col justify-between">
@@ -136,7 +149,7 @@ export default function Dashboard() {
                 <p className="text-slate-500 font-medium">Nenhum evento encontrado para a sua busca.</p>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className={`grid ${gridColumns} gap-6`}>
                 {eventos.map((evento) => (
                   // Importante: Alterado de 'evento.id' para 'evento.id_evento' conforme o JSON da API
                   <EventCard key={evento.id_evento} evento={evento} />

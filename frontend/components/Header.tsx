@@ -1,4 +1,4 @@
-export default function Header({ onSearch }) {
+export default function Header({ onSearch }: { onSearch: (value: string) => void }) {
   // Debounce, cache e cancelamento de requisições obsoletas são tratados no Dashboard (useEffect de busca)
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
