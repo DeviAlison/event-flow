@@ -456,3 +456,21 @@ export async function GET(request: Request) {
 
   return NextResponse.json(dados);
 }
+
+export async function POST(request: Request) {
+  try {
+    const dados = await request.json();
+
+    // Simula o tempo de resposta do servidor (1.5 segundos)
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // Simula a resposta de sucesso do backend
+    return NextResponse.json({
+      mensagem: "Evento criado com sucesso!",
+      eventoRecebido: dados
+    }, { status: 201 });
+    
+  } catch (error) {
+    return NextResponse.json({ erro: "Erro ao processar criação do evento." }, { status: 500 });
+  }
+}

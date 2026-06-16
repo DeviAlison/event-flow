@@ -8,7 +8,7 @@ import FilterTabs from "@/components/FilterTabs";
 
 // Estrutura de cada entrada armazenada no cache de buscas
 type EventosCacheEntry = {
-  eventos: never[];
+  eventos: any[];
   paginacao: { pagina: number; qntd_item_pag: number };
 };
 
@@ -55,7 +55,7 @@ export default function Dashboard() {
     // Cache hit: reutiliza resultado já buscado para essa combinação de filtros/página
     const cached = cacheRef.current.get(cacheKey);
     if (cached) {
-      setEventos(cached.eventos);
+      setEventos(cached.eventos as never[]);
       setPaginacao(cached.paginacao);
       setLoading(false);
       return;
@@ -150,7 +150,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className={`grid ${gridColumns} gap-6`}>
-                {eventos.map((evento) => (
+                {eventos.map((evento: any) => (
                   // Importante: Alterado de 'evento.id' para 'evento.id_evento' conforme o JSON da API
                   <EventCard key={evento.id_evento} evento={evento} />
                 ))}
@@ -184,7 +184,6 @@ export default function Dashboard() {
               </button>
             </div>
           )}
-
         </main>
       </div>
     </div>
