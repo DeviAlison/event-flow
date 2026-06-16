@@ -1,10 +1,13 @@
-export default function Header({ onSearch }) {
-  // Debounce, cache e cancelamento de requisições obsoletas são tratados no Dashboard (useEffect de busca)
+import Link from "next/link";
+
+export default function Header({ onSearch }: { onSearch: (value: string) => void }) {
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
       <div>
         <p className="text-sm font-medium text-slate-400 mb-1">Explorar / Eventos</p>
-        <h1 className="text-3xl font-bold text-slate-800">Descubra Eventos</h1>
+        <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-700 via-pink-600 to-orange-500">
+          Descubra Eventos
+        </h1>
       </div>
 
       <div className="flex items-center gap-4 w-full md:w-auto">
@@ -18,7 +21,8 @@ export default function Header({ onSearch }) {
           />
         </div>
         
-        <button className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-md shadow-orange-500/30">
+        {/* Botão de Filtro */}
+        <button className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-md shadow-slate-500/30">
           <i className="bi bi-sliders"></i>
         </button>
       </div>

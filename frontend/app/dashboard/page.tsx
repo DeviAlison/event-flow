@@ -107,73 +107,62 @@ export default function Dashboard() {
   const ehUltimaPagina = eventos.length < paginacao.qntd_item_pag;
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-6 flex justify-center font-sans">
-      <div className="w-full max-w-[1400px] flex gap-6 h-[calc(100vh-3rem)]">
+    <>
+      <div>
+        {/* Passando a função de atualização de busca para o Header */}
+        <Header onSearch={setSearch} />
         
-        <Sidebar />
+        {/* Passando o estado da categoria e sua função de atualização */}
+        <FilterTabs 
+          categoriaAtiva={categoria} 
+          setCategoriaAtiva={setCategoria} 
+        />
 
-        {/* Adicionado 'flex flex-col justify-between' para empurrar a paginação para o rodapé */}
-        <main className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-8 overflow-y-auto flex flex-col justify-between">
-          
-          <div>
-            {/* Passando a função de atualização de busca para o Header */}
-            <Header onSearch={setSearch} />
-            
-            {/* Passando o estado da categoria e sua função de atualização */}
-            <FilterTabs 
-              categoriaAtiva={categoria} 
-              setCategoriaAtiva={setCategoria} 
-            />
-
-            {/* Renderização Condicional: Loading -> Grid ou Mensagem de Vazio */}
-            {loading ? (
-              <div className="flex justify-center items-center h-48">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
-              </div>
-            ) : eventos.length === 0 ? (
-              <div className="text-center py-12">
-                <i className="bi bi-calendar-x text-4xl text-slate-300 mb-3 block"></i>
-                <p className="text-slate-500 font-medium">Nenhum evento encontrado para a sua busca.</p>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {eventos.map((evento) => (
-                  // Importante: Alterado de 'evento.id' para 'evento.id_evento' conforme o JSON da API
-                  <EventCard key={evento.id_evento} evento={evento} />
-                ))}
-              </div>
-            )}
+        {/* Renderização Condicional: Loading -> Grid ou Mensagem de Vazio */}
+        {loading ? (
+          <div className="flex justify-center items-center h-48">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
           </div>
-
-          {/* Componente de Barra de Paginação */}
-          {!loading && eventos.length > 0 && (
-            <div className="flex items-center justify-between border-t border-slate-100 pt-6 mt-8">
-              <button
-                onClick={() => setPaginaAtual((prev) => Math.max(prev - 1, 1))}
-                disabled={paginaAtual === 1}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
-              >
-                <i className="bi bi-chevron-left"></i>
-                Anterior
-              </button>
-
-              <span className="text-sm font-semibold text-slate-600">
-                Página {paginaAtual}
-              </span>
-
-              <button
-                onClick={() => setPaginaAtual((prev) => prev + 1)}
-                disabled={ehUltimaPagina}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
-              >
-                Próxima
-                <i className="bi bi-chevron-right"></i>
-              </button>
-            </div>
-          )}
-
-        </main>
+        ) : eventos.length === 0 ? (
+          <div className="text-center py-12">
+            <i className="bi bi-calendar-x text-4xl text-slate-300 mb-3 block"></i>
+            <p className="text-slate-500 font-medium">Nenhum evento encontrado para a sua busca.</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {eventos.map((evento: any) => (
+              <EventCard key={evento.id_evento} evento={evento} />
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* Componente de Barra de Paginação */}
+      {!loading && eventos.length > 0 && (
+        <div className="flex items-center justify-between border-t border-slate-100 pt-6 mt-8">
+          <button
+            onClick={() => setPaginaAtual((prev) => Math.max(prev - 1, 1))}
+            disabled={paginaAtual === 1}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+          >
+            <i className="bi bi-chevron-left"></i>
+            Anterior
+          </button>
+
+          <span className="text-sm font-semibold text-slate-600">
+            Página {paginaAtual}
+          </span>
+
+          <button
+            onClick={() => setPaginaAtual((prev) => prev + 1)}
+            disabled={ehUltimaPagina}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+          >
+            Próxima
+            <i className="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      )}
+    </>
   );
 }

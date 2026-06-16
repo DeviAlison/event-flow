@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
 export default function Cadastro() {
+  const router = useRouter();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -15,13 +17,14 @@ export default function Cadastro() {
   const [cnpj, setCnpj] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
   const limparMensagem = () => {
     setMensagem("");
     setErro("");
   };
 
-  const handleSubmit = (evento: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (evento: React.FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
     limparMensagem();
 
@@ -29,18 +32,47 @@ export default function Cadastro() {
       setErro("As senhas não coincidem. Verifique e tente novamente.");
       return;
     }
-
     if (tipoPessoa === "pf" && !cpf.trim()) {
       setErro("Por favor, informe o CPF para pessoa física.");
       return;
     }
-
     if (tipoPessoa === "pj" && !cnpj.trim()) {
       setErro("Por favor, informe o CNPJ para pessoa jurídica.");
       return;
     }
 
-    setMensagem("Formulário preenchido com sucesso. Os dados não são salvos neste protótipo.");
+    setCarregando(true);
+
+    try {
+      // Apontando para a nossa rota simulada no Next.js
+      const resposta = await fetch("/api/auth/cadastro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome,
+          email,
+          senha,
+          telefone,
+          tipoPessoa,
+          documento: tipoPessoa === "pf" ? cpf : cnpj,
+        }),
+      });
+
+      const dados = await resposta.json();
+
+      if (resposta.ok) {
+        setMensagem("Cadastro realizado com sucesso! Redirecionando...");
+        setTimeout(() => {
+          router.push("/login");
+        }, 2000);
+      } else {
+        setErro(dados.erro || "Erro ao realizar cadastro.");
+      }
+    } catch (err) {
+      setErro("Erro de conexão com o servidor.");
+    } finally {
+      setCarregando(false);
+    }
   };
 
   return (
@@ -52,107 +84,47 @@ export default function Cadastro() {
           </svg>
         </Link>
         <div className="flex justify-center mb-0">
-          <Image
-            src="/logo.png"
-            alt="Logo Event Flow"
-            width={200}
-            height={200}
-            priority
-            className="object-contain"
-          />
+          <Image src="/logo.png" alt="Logo Event Flow" width={200} height={200} priority className="object-contain" />
         </div>
 
         <h2 className="text-2xl font-bold text-center text-slate-900 mb-2 mt-2">Criar nova conta</h2>
-
-        <p className="text-center text-sm text-slate-600 mb-4">
-          Preencha os campos abaixo para criar sua conta. Todos os campos são obrigatórios.
-        </p>
+        <p className="text-center text-sm text-slate-600 mb-4">Preencha os campos abaixo para criar sua conta. Todos os campos são obrigatórios.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-1">Nome completo</label>
-            <input
-              type="text"
-              required
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Seu nome"
-              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-            />
+            <input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} disabled={carregando} placeholder="Seu nome" className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-1">E-mail</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@exemplo.com"
-              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-            />
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={carregando} placeholder="email@exemplo.com" className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-1">Senha</label>
-            <input
-              type="password"
-              required
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              placeholder="Crie uma senha"
-              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-            />
+            <input type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} disabled={carregando} placeholder="Crie uma senha" className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-1">Confirmação de senha</label>
-            <input
-              type="password"
-              required
-              value={confirmacao}
-              onChange={(e) => setConfirmacao(e.target.value)}
-              placeholder="Repita a senha"
-              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-            />
+            <input type="password" required value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} disabled={carregando} placeholder="Repita a senha" className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-900 mb-1">Telefone</label>
-            <input
-              type="tel"
-              required
-              value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
-              placeholder="(11) 99999-9999"
-              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-            />
+            <input type="tel" required value={telefone} onChange={(e) => setTelefone(e.target.value)} disabled={carregando} placeholder="(11) 99999-9999" className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50" />
           </div>
 
           <fieldset className="rounded-2xl border border-slate-200 bg-white p-4">
             <legend className="text-sm font-medium text-slate-900 mb-3">Tipo de pessoa</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="cursor-pointer rounded-2xl border border-slate-300 px-4 py-3 transition hover:border-violet-500">
-                <input
-                  type="radio"
-                  name="tipoPessoa"
-                  value="pf"
-                  checked={tipoPessoa === "pf"}
-                  onChange={() => setTipoPessoa("pf")}
-                  required
-                  className="mr-2 accent-violet-600"
-                />
+                <input type="radio" name="tipoPessoa" value="pf" checked={tipoPessoa === "pf"} onChange={() => setTipoPessoa("pf")} required disabled={carregando} className="mr-2 accent-violet-600" />
                 Pessoa Física
               </label>
               <label className="cursor-pointer rounded-2xl border border-slate-300 px-4 py-3 transition hover:border-violet-500">
-                <input
-                  type="radio"
-                  name="tipoPessoa"
-                  value="pj"
-                  checked={tipoPessoa === "pj"}
-                  onChange={() => setTipoPessoa("pj")}
-                  className="mr-2 accent-violet-600"
-                />
+                <input type="radio" name="tipoPessoa" value="pj" checked={tipoPessoa === "pj"} onChange={() => setTipoPessoa("pj")} disabled={carregando} className="mr-2 accent-violet-600" />
                 Pessoa Jurídica
               </label>
             </div>
@@ -161,26 +133,12 @@ export default function Cadastro() {
           {tipoPessoa === "pf" ? (
             <div>
               <label className="block text-sm font-medium text-slate-900 mb-1">CPF</label>
-              <input
-                type="text"
-                required
-                value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
-                placeholder="000.000.000-00"
-                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-              />
+              <input type="text" required value={cpf} onChange={(e) => setCpf(e.target.value)} disabled={carregando} placeholder="000.000.000-00" className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50" />
             </div>
           ) : (
             <div>
               <label className="block text-sm font-medium text-slate-900 mb-1">CNPJ</label>
-              <input
-                type="text"
-                required
-                value={cnpj}
-                onChange={(e) => setCnpj(e.target.value)}
-                placeholder="00.000.000/0000-00"
-                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-              />
+              <input type="text" required value={cnpj} onChange={(e) => setCnpj(e.target.value)} disabled={carregando} placeholder="00.000.000/0000-00" className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors disabled:opacity-50" />
             </div>
           )}
 
@@ -192,9 +150,10 @@ export default function Cadastro() {
 
           <button
             type="submit"
+            disabled={carregando}
             className="w-full flex items-center justify-center py-2.5 px-4 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-600 hover:opacity-90 text-white font-semibold rounded-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed mt-2 shadow-md shadow-violet-500/30"
           >
-            Finalizar cadastro
+            {carregando ? "Salvando..." : "Finalizar cadastro"}
           </button>
         </form>
       </div>
