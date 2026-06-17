@@ -20,6 +20,19 @@ export default function CriarEvento() {
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
   const [quantPessoas, setQuantPessoas] = useState("");
+  
+  const [imagem, setImagem] = useState("");
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagem(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (evento: React.FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
@@ -31,7 +44,7 @@ export default function CriarEvento() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nome, descricao, dataInicio, dataFim, nomeLocal, endereco, numero, cidade, estado, quantPessoas
+          nome, descricao, dataInicio, dataFim, nomeLocal, endereco, numero, cidade, estado, quantPessoas, imagem
         }),
       });
 
@@ -49,10 +62,7 @@ export default function CriarEvento() {
   };
 
   return (
-    // Removido o 'h-full' e 'overflow' para rolar naturalmente e não cortar as bordas
     <div className="pb-8">
-      
-      {/* Header com toques de cor */}
       <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
         <Link href="/dashboard" className="flex items-center justify-center w-11 h-11 rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors shadow-sm">
           <i className="bi bi-arrow-left text-xl font-bold"></i>
@@ -66,13 +76,17 @@ export default function CriarEvento() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl">
-        
-        {/* Bloco 1: Informações Básicas (Violeta) */}
         <div className="bg-violet-50/30 border border-violet-100 rounded-2xl p-6 shadow-sm">
           <h3 className="text-xs font-bold text-violet-700 uppercase tracking-wider mb-5 flex items-center gap-2">
             <i className="bi bi-card-text text-base"></i> Informações Principais
           </h3>
           <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Imagem de Capa (Opcional)</label>
+              <input type="file" accept="image/*" onChange={handleFileUpload} className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 transition-all cursor-pointer" />
+              {imagem && <img src={imagem} alt="Preview" className="mt-4 h-32 w-48 object-cover rounded-xl shadow-md border border-slate-200" />}
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nome do Evento *</label>
               <input type="text" required value={nome} onChange={(e) => setNome(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all shadow-sm" placeholder="Ex: Hackathon Code The Future" />
@@ -84,24 +98,22 @@ export default function CriarEvento() {
           </div>
         </div>
 
-        {/* Bloco 2: Datas (Laranja) */}
         <div className="bg-orange-50/40 border border-orange-100 rounded-2xl p-6 shadow-sm">
           <h3 className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-5 flex items-center gap-2">
             <i className="bi bi-calendar-event text-base"></i> Data e Hora
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Início *</label>
-              <input type="datetime-local" required value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all shadow-sm" />
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Início (Opcional)</label>
+              <input type="datetime-local" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all shadow-sm" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Encerramento *</label>
-              <input type="datetime-local" required value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all shadow-sm" />
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Encerramento (Opcional)</label>
+              <input type="datetime-local" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all shadow-sm" />
             </div>
           </div>
         </div>
 
-        {/* Bloco 3: Localização (Rosa) */}
         <div className="bg-pink-50/40 border border-pink-100 rounded-2xl p-6 shadow-sm">
           <h3 className="text-xs font-bold text-pink-600 uppercase tracking-wider mb-5 flex items-center gap-2">
             <i className="bi bi-geo-alt text-base"></i> Localização e Capacidade
@@ -109,7 +121,7 @@ export default function CriarEvento() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nome do Local</label>
-              <input type="text" value={nomeLocal} onChange={(e) => setNomeLocal(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all shadow-sm" placeholder="Ex: Centro de Convenções / Teatro Municipal" />
+              <input type="text" value={nomeLocal} onChange={(e) => setNomeLocal(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all shadow-sm" placeholder="Ex: Centro de Convenções" />
             </div>
             <div className="md:col-span-2 flex gap-4">
               <div className="flex-1">
@@ -137,23 +149,12 @@ export default function CriarEvento() {
           </div>
         </div>
 
-        {/* Alertas */}
         {erro && <div className="p-4 flex items-center gap-3 text-sm font-bold text-red-700 bg-red-50 border border-red-200 rounded-xl shadow-sm"><i className="bi bi-exclamation-triangle"></i> {erro}</div>}
         {mensagem && <div className="p-4 flex items-center gap-3 text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl shadow-sm"><i className="bi bi-check-circle"></i> {mensagem}</div>}
 
-        {/* Botão de Submit */}
         <div className="flex justify-end pt-4">
           <button type="submit" disabled={carregando} className="py-3 px-8 flex items-center gap-2 bg-gradient-to-r from-orange-500 via-pink-500 to-violet-600 hover:opacity-90 text-white text-base font-bold rounded-xl transition-all shadow-lg shadow-violet-500/30 disabled:opacity-70">
-            {carregando ? (
-              <>
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                Processando...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-check-lg"></i> Publicar Evento
-              </>
-            )}
+            {carregando ? "Processando..." : "Publicar Evento"}
           </button>
         </div>
       </form>

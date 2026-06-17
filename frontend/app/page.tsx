@@ -1,6 +1,6 @@
-import Dashboard from "./dashboard/page";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  // Redireciona o usuário da raiz (/) direto para o (/dashboard)
-  return <Dashboard />;
+  // Redireciona o usuário imediatamente para o dashboard
+  redirect("/dashboard");
 }
