@@ -1,103 +1,83 @@
-from datetime import datetime
-
-# Simulando o banco de dados. 
-# Status: 1 (Ativo), 2 (No Radar), 3 (Finalizado)
-eventos_mock = [
-    {
-        "id_evento": 101,
-        "titulo": "Festival de Inverno de Muzambinho",
-        "preco": 120.00,
-        "status": 1, 
-        "porcen_vend": 85,
-        "categoria": "Show",
-        "data": "15/07/2026",
-        "hora": "20:00",
-        "local": "Parque de Exposições",
-        "localizacao": {
-            "numero": 1000,
-            "endereco": "Av. Principal",
-            "cidade": "Muzambinho",
-            "estado": "MG"
-        },
-        "quant_reacoes": 450
-    },
-    {
-        "id_evento": 102,
-        "titulo": "Tech Future Expo",
-        "preco": 0.00,
-        "status": 2, 
-        "porcen_vend": 10,
-        "categoria": "Tecnologia",
-        "data": "10/11/2026",
-        "hora": "09:00",
-        "local": "Centro de Convenções",
-        "localizacao": {
-            "numero": 500,
-            "endereco": "Rua da Inovação",
-            "cidade": "São Paulo",
-            "estado": "SP"
-        },
-        "quant_reacoes": 890
-    },
-    {
-        "id_evento": 103,
-        "titulo": "Echo Beats Festival",
-        "preco": 60.00,
-        "status": 3, 
-        "porcen_vend": 100,
-        "categoria": "Music",
-        "data": "20/05/2026",
-        "hora": "18:00",
-        "local": "Sunset Park",
-        "localizacao": {
-            "numero": 10,
-            "endereco": "Via Costeira",
-            "cidade": "Rio de Janeiro",
-            "estado": "RJ"
-        },
-        "quant_reacoes": 1200
-    }
-]
+from app.models import Evento, Categoria, TipoIngresso, Lote, Curtida, db
+from sqlalchemy import func
 
 def obter_vitrine_eventos(filtros):
-    resultados = eventos_mock.copy()
+    # Inicia a consulta base. Usamos outerjoin na Curtida para não excluir eventos sem likes.
+    query = Evento.query.join(Categoria).outerjoin(Curtida)
 
-    # US 4: Filtros Rápidos de Status
+    # ... (MANTENHA OS FILTROS DA US 4 E US 3 EXATAMENTE COMO FIZEMOS ANTES) ...
     status_filtro = filtros.get('status')
-    if status_filtro:
-        # Converte a string da URL para o código inteiro correspondente
-        mapa_status = {"Ativos": 1, "No Radar": 2, "Finalizados": 3}
-        codigo_status = mapa_status.get(status_filtro)
-        if codigo_status:
-            resultados = [e for e in resultados if e["status"] == codigo_status]
+    if status_filtro == "Ativos":
+        query = query.filter(Evento.status == 'Publicado')
+    elif status_filtro == "Finalizados":
+        query = query.filter(Evento.status == 'Encerrado')
 
-    # US 3: Barra de Pesquisa Global (Busca Textual)
     search_filtro = filtros.get('search')
     if search_filtro and len(search_filtro) >= 3:
-        termo = search_filtro.lower()
-        # O Tech Lead pediu busca por Artista e Produtora, mas como seu JSON 
-        # atual não tem esses campos, estamos buscando apenas no título por enquanto.
-        resultados = [e for e in resultados if termo in e["titulo"].lower()]
+        query = query.filter(Evento.nome.ilike(f"%{search_filtro}%"))
 
-    # Filtro Extra: Categoria
     categoria_filtro = filtros.get('categoria')
     if categoria_filtro:
-        resultados = [e for e in resultados if e["categoria"].lower() == categoria_filtro.lower()]
+        query = query.filter(Categoria.nome.ilike(f"%{categoria_filtro}%"))
 
     # US 2: Regra de Ordenação (Peso)
-    # Ordena primariamente por Hype (quant_reacoes) decrescente
-    resultados.sort(key=lambda x: x["quant_reacoes"], reverse=True)
+    # Agrupamos por evento e ordenamos PRIMEIRO pelo total de curtidas (DESC) e DEPOIS pela data mais próxima (ASC)
+    # US 2: Regra de Ordenação (Peso)
+    # Passamos todas as colunas da tabela Evento para o GROUP BY para satisfazer o MySQL
+    query = query.group_by(*Evento.__table__.columns).order_by(
+        func.count(Curtida.idcurtidas).desc(), 
+        Evento.data_inicio.asc()
+    )
+    
+    eventos_db = query.limit(30).all()
 
-    # US 2: Limite de Exibição (Paginação limitando a 30)
-    resultados_paginados = resultados[:30]
+    resultados_formatados = []
+    for evento in eventos_db:
+        # Lógica para encontrar o preço base (o menor preço do lote atual)
+        preco_base = 0.00
+        ingressos_vendidos = 0
+        ingressos_totais = 0
+        
+        for tipo in evento.tipos_ingresso:
+            for lote in tipo.lotes:
+                # Pega o menor preço disponível
+                if preco_base == 0.00 or lote.preco < preco_base:
+                    preco_base = float(lote.preco)
+                
+                # Soma para calcular a % de lotação da barra de progresso (AC 3)
+                if lote.quant_totais and lote.quant_vendida:
+                    ingressos_totais += lote.quant_totais
+                    ingressos_vendidos += lote.quant_vendida
+        
+        # Calcula a porcentagem de vendas
+        porcen_vend = int((ingressos_vendidos / ingressos_totais) * 100) if ingressos_totais > 0 else 0
 
-    # Montagem da estrutura de saída idêntica ao seu modelo JSON
+        resultados_formatados.append({
+            "id_evento": evento.ideventos,
+            "titulo": evento.nome,
+            "preco": preco_base, 
+            "status": 1 if evento.status == 'Publicado' else 3,
+            "porcen_vend": porcen_vend,
+            "categoria": evento.categoria.nome if evento.categoria else "Sem categoria",
+            "data": evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else "",
+            "hora": evento.data_inicio.strftime('%H:%M') if evento.data_inicio else "",
+            "local": evento.nome_local,
+            "localizacao": {
+                "numero": evento.numero_end,
+                "endereco": evento.endereco,
+                "cidade": evento.cidade,
+                "estado": evento.estado
+            },
+            # Conta as curtidas deste evento específico
+            "quant_reacoes": evento.curtidas.count() 
+        })
+
     resposta = {
         "paginacao": {
             "pagina": 1,
-            "qntd_item_pag": len(resultados_paginados)
+            "qntd_item_pag": len(resultados_formatados)
         },
-        "eventos": resultados_paginados
+        "eventos": resultados_formatados
     }
 
     return resposta, 200

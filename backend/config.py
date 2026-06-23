@@ -1,9 +1,13 @@
 import os
 from dotenv import load_dotenv
 
-# Carrega as variáveis do arquivo .env
 load_dotenv()
 
 class Config:
-    # Pega a chave do .env. Se não achar, usa uma padrão.
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'default_secret_key_event_flow'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'chave_padrao_insegura'
+    
+    # Configuração da URL do banco de dados
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    
+    # Desativa os avisos de modificação do SQLAlchemy para economizar memória
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
