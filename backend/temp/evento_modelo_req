@@ -1,0 +1,8 @@
+url busca de eventos: https://localhost:3000/eventos
+método: GET
+query parameters: status; data_evento; search; categoria
+padrão: 
+  status: string (limit 20)
+  data: string (dd/mm/yyyy) (limit 10)
+  search: string (limit 45)
+  categoria: string (limit 20)

@@ -1,0 +1,28 @@
+{
+    "paginacao": {
+        "pagina": 1, // int
+        "qntd_item_pag": 30 // int
+    },
+    "eventos": [
+        {
+            "id_evento": 0, // int
+            "titulo": "", // string
+            "preco": 0, // int
+            "status": 1, // boleano (finalizado, em andamento, ativo)
+            "porcen_vend": 0, // int
+            "categoria": "", // string
+            "data": "", // string (DD/MM/YYYY)
+            "hora": "", // string (hh:mm)
+            "local": "", // string
+            "localizacao": {
+                "numero": 0, // int
+                "endereco": "", // string
+                "cidade": "", // string
+                "estado": "" // string (sigla 2 digitos)
+            },
+            "quant_reacoes": 0 // int
+        }
+    ]
+}
+
+// !! necessidade adição de busca por Artista e Produtora. eventos_controller.py ainda não possui busca por artista e produtora, apenas por título !!

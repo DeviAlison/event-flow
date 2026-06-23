@@ -1,0 +1,36 @@
+Listagem de caminhos de pasta
+O número de série do volume é 000000D2 C894:CB5D
+C:.
+│   .env
+│   .gitattributes
+│   .gitignore
+│   config.py
+│   estrutura.txt
+│   lista_do_que_fiz.txt
+│   README.md
+│   requirements.txt
+│   run.py
+│   
+├───.venv
+│   │   (...)
+│           
+├───app
+│   │   controllers.py
+│   │   models.py
+│   │   routes.py
+│   │   __init__.py
+│   │   
+│   └───__pycache__
+│           __init__.cpython-314.pyc
+│           
+├───temp
+│       app.py
+│       evento_modelo_req
+│       hello.py
+│       json.json
+│       
+└───__pycache__
+        app.cpython-314.pyc
+        config.cpython-314.pyc
+        hello.cpython-314.pyc
+        
