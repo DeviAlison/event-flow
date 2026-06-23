@@ -75,7 +75,7 @@ export default function CriarEvento() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl">
+      <form onSubmit={handleSubmit} className="space-y-8 w-full">
         <div className="bg-violet-50/30 border border-violet-100 rounded-2xl p-6 shadow-sm">
           <h3 className="text-xs font-bold text-violet-700 uppercase tracking-wider mb-5 flex items-center gap-2">
             <i className="bi bi-card-text text-base"></i> Informações Principais

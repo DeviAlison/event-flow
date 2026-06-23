@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Sidebar from "@/components/Sidebar";
+import { useSidebar } from "@/providers/SidebarProvider";
 import EventCard from "@/components/EventCard";
 import Header from "@/components/Header";
 import FilterTabs from "@/components/FilterTabs";
@@ -20,17 +20,18 @@ export default function Dashboard() {
   
   // Estados para os filtros e controle de página
   const [search, setSearch] = useState("");
-  const [categoria, setCategoria] = useState("");
+  const [status, setStatus] = useState("");
   const [paginaAtual, setPaginaAtual] = useState(1);
+  const { sidebarOpen } = useSidebar();
 
   // Cache em memória: evita repetir requisições para a mesma combinação de filtros/página
   const cacheRef = useRef<Map<string, EventosCacheEntry>>(new Map());
 
-  // Sempre que o usuário digitar algo na busca ou mudar de categoria,
+  // Sempre que o usuário digitar algo na busca ou mudar de status,
   // voltamos automaticamente para a página 1 para evitar inconsistências
   useEffect(() => {
     setPaginaAtual(1);
-  }, [search, categoria]);
+  }, [search, status]);
 
   // Efeito responsável por buscar os dados no backend falso (/api/eventos)
   // Inclui: debounce maior, minLength, cache em memória e cancelamento via AbortController
@@ -47,7 +48,7 @@ export default function Dashboard() {
     // Montando dinamicamente os Query Parameters
     const params = new URLSearchParams();
     if (searchTerm) params.append("search", searchTerm);
-    if (categoria) params.append("categoria", categoria);
+    if (status) params.append("status", status.toLowerCase());
     params.append("pagina", paginaAtual.toString());
     const cacheKey = params.toString();
 
@@ -101,10 +102,12 @@ export default function Dashboard() {
       clearTimeout(delayDebounceFn);
       controller.abort();
     };
-  }, [search, categoria, paginaAtual]); // Executa novamente se qualquer um desses mudar
+  }, [search, status, paginaAtual]); // Executa novamente se qualquer um desses mudar
 
   // Heurística de fim de página: se o backend enviou menos itens do que o limite, a página atual é a última
   const ehUltimaPagina = eventos.length < paginacao.qntd_item_pag;
+
+  const gridColumns = sidebarOpen ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-4";
 
   return (
     <>
@@ -112,10 +115,10 @@ export default function Dashboard() {
         {/* Passando a função de atualização de busca para o Header */}
         <Header onSearch={setSearch} />
         
-        {/* Passando o estado da categoria e sua função de atualização */}
+        {/* Passando o estado do status e sua função de atualização */}
         <FilterTabs 
-          categoriaAtiva={categoria} 
-          setCategoriaAtiva={setCategoria} 
+          statusAtivo={status} 
+          setStatusAtivo={setStatus} 
         />
 
         {/* Renderização Condicional: Loading -> Grid ou Mensagem de Vazio */}
@@ -129,12 +132,14 @@ export default function Dashboard() {
             <p className="text-slate-500 font-medium">Nenhum evento encontrado para a sua busca.</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className={`grid ${gridColumns} gap-6 transition-all duration-500 ease-in-out`}>
             {eventos.map((evento: any) => (
               <EventCard key={evento.id_evento} evento={evento} />
             ))}
           </div>
-        )}
+        )
+      }
+        
       </div>
 
       {/* Componente de Barra de Paginação */}

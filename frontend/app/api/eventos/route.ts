@@ -7,8 +7,17 @@ export async function GET(request: Request) {
   // 1. Captura os parâmetros de busca enviados pelo seu Dashboard
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search')?.toLowerCase() || '';
-  const categoria = searchParams.get('categoria') || '';
+  const statusParam = searchParams.get('status')?.toLowerCase() || '';
   const pagina = parseInt(searchParams.get('pagina') || '1');
+
+  const statusMap = {
+    ativo: 1,
+    'no radar': 0,
+    'noradar': 0,
+    finalizado: 2,
+  } as const;
+
+  const filtroStatus = statusParam ? statusMap[statusParam as keyof typeof statusMap] : undefined;
 
   // 2. Sua lista completa com os 24 casos de teste
   const todosEventos = [
@@ -118,7 +127,7 @@ export async function GET(request: Request) {
       "id_evento": 7,
       "titulo": "Congresso de Engenharia de Software",
       "preco": 350,
-      "status": 1,
+      "status": 2,
       "porcen_vend": 30,
       "categoria": "Software",
       "data": "20/11/2026",
@@ -419,14 +428,184 @@ export async function GET(request: Request) {
         "estado": "MG"
       },
       "quant_reacoes": 765
+    },
+    {
+      "id_evento": 25,
+      "titulo": "Roda de Conversa sobre Sustentabilidade Tech",
+      "preco": 20,
+      "status": 0,
+      "porcen_vend": 55,
+      "categoria": "Tecnologia",
+      "data": "10/07/2027",
+      "hora": "14:00",
+      "endereco": {
+        "local": "Espaço Verde",
+        "rua": "Rua das Palmeiras, 200",
+        "cidade": "Poços de Caldas",
+        "estado": "MG"
+      },
+      "quant_reacoes": 112
+    },
+    {
+      "id_evento": 26,
+      "titulo": "Noite de Jogos e Programação",
+      "preco": 0,
+      "status": 1,
+      "porcen_vend": 65,
+      "categoria": "Programação",
+      "data": "15/07/2027",
+      "hora": "19:30",
+      "endereco": {
+        "local": "Lab. de Informática",
+        "rua": "Av. Universitária, 88",
+        "cidade": "Campinas",
+        "estado": "SP"
+      },
+      "quant_reacoes": 230
+    },
+    {
+      "id_evento": 27,
+      "titulo": "Pitch Night de Startups",
+      "preco": 45,
+      "status": 2,
+      "porcen_vend": 80,
+      "categoria": "Empreendedorismo",
+      "data": "20/07/2027",
+      "hora": "18:00",
+      "endereco": {
+        "local": "Centro de Eventos Empresariais",
+        "rua": "Av. Bento Gonçalves, 1234",
+        "cidade": "Belo Horizonte",
+        "estado": "MG"
+      },
+      "quant_reacoes": 412
+    },
+    {
+      "id_evento": 28,
+      "titulo": "Maratona de Desenvolvimento Mobile",
+      "preco": 150,
+      "status": 1,
+      "porcen_vend": 40,
+      "categoria": "Desenvolvimento Web",
+      "data": "28/07/2027",
+      "hora": "09:00",
+      "endereco": {
+        "local": "Hub de Inovação",
+        "rua": "Rua da Tecnologia, 256",
+        "cidade": "Uberlândia",
+        "estado": "MG"
+      },
+      "quant_reacoes": 179
+    },
+    {
+      "id_evento": 29,
+      "titulo": "Oficina de Segurança em Aplicações",
+      "preco": 100,
+      "status": 0,
+      "porcen_vend": 70,
+      "categoria": "Segurança",
+      "data": "05/08/2027",
+      "hora": "16:00",
+      "endereco": {
+        "local": "Faculdade de Engenharia",
+        "rua": "Av. Paraná, 500",
+        "cidade": "São Paulo",
+        "estado": "SP"
+      },
+      "quant_reacoes": 341
+    },
+    {
+      "id_evento": 30,
+      "titulo": "Seminário de Blockchain e Cripto",
+      "preco": 220,
+      "status": 1,
+      "porcen_vend": 90,
+      "categoria": "Blockchain",
+      "data": "12/08/2027",
+      "hora": "10:00",
+      "endereco": {
+        "local": "Teatro do Centro",
+        "rua": "Praça do Comércio, 80",
+        "cidade": "Ribeirão Preto",
+        "estado": "SP"
+      },
+      "quant_reacoes": 514
+    },
+    {
+      "id_evento": 31,
+      "titulo": "Expo de Inteligência Artificial",
+      "preco": 180,
+      "status": 2,
+      "porcen_vend": 75,
+      "categoria": "Inteligência Artificial",
+      "data": "22/08/2027",
+      "hora": "09:30",
+      "endereco": {
+        "local": "Centro de Convenções",
+        "rua": "Av. Brasil, 700",
+        "cidade": "Campinas",
+        "estado": "SP"
+      },
+      "quant_reacoes": 650
+    },
+    {
+      "id_evento": 32,
+      "titulo": "Meetup de DevOps e Automação",
+      "preco": 30,
+      "status": 1,
+      "porcen_vend": 85,
+      "categoria": "DevOps",
+      "data": "28/08/2027",
+      "hora": "17:00",
+      "endereco": {
+        "local": "Coworking Tech",
+        "rua": "Rua dos Devs, 208",
+        "cidade": "Poços de Caldas",
+        "estado": "MG"
+      },
+      "quant_reacoes": 287
+    },
+    {
+      "id_evento": 33,
+      "titulo": "Fórum de Inclusão Digital",
+      "preco": 0,
+      "status": 0,
+      "porcen_vend": 60,
+      "categoria": "Diversidade",
+      "data": "03/09/2027",
+      "hora": "15:00",
+      "endereco": {
+        "local": "Auditório Comunitário",
+        "rua": "Av. dos Sonhos, 22",
+        "cidade": "Muzambinho",
+        "estado": "MG"
+      },
+      "quant_reacoes": 179
+    },
+    {
+      "id_evento": 34,
+      "titulo": "Hackathon Saúde Digital",
+      "preco": 0,
+      "status": 1,
+      "porcen_vend": 95,
+      "categoria": "Hackathon",
+      "data": "10/09/2027",
+      "hora": "09:00",
+      "endereco": {
+        "local": "Hospital Universitário",
+        "rua": "Rua da Saúde, 350",
+        "cidade": "Pouso Alegre",
+        "estado": "MG"
+      },
+      "quant_reacoes": 322
     }
   ];
 
   // 3. Aplicação dos Filtros Dinâmicos
   let eventosFiltrados = todosEventos;
 
-  if (categoria) {
-    eventosFiltrados = eventosFiltrados.filter(e => e.categoria.toLowerCase() === categoria.toLowerCase());
+  if (filtroStatus !== undefined) {
+    eventosFiltrados = eventosFiltrados.filter(e => e.status === filtroStatus);
   }
 
   if (search) {
@@ -437,7 +616,7 @@ export async function GET(request: Request) {
     );
   }
 
-  console.log(`[DEBUG] Categoria: "${categoria}" | Search: "${search}" | Total filtrado: ${eventosFiltrados.length} | Total geral: ${todosEventos.length}`);
+  console.log(`[DEBUG] Status: "${statusParam}" | Search: "${search}" | Total filtrado: ${eventosFiltrados.length} | Total geral: ${todosEventos.length}`);
 
   // 4. Aplicação da Paginação
   const qntd_item_pag = 30;
