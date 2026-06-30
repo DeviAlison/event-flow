@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 
 # Inicializamos o objeto do banco de dados sem atrelar ao app ainda
@@ -69,3 +70,27 @@ class Lote(db.Model):
     quant_total = db.Column(db.Integer)
     quant_vendida = db.Column(db.Integer)
     tipo_ingresso_idTipo_Ingresso = db.Column(db.Integer, db.ForeignKey('tipo_ingresso.idtipo_ingresso'))
+
+class Comentario(db.Model):
+    __tablename__ = 'comentarios'
+    idcomentario = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    texto = db.Column(db.String(200))
+    data = db.Column(db.DateTime, default=datetime.utcnow)
+    atualizado = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # O SQL definiu como VARCHAR, mas usaremos para armazenar o ID do comentário pai
+    comentariopai = db.Column(db.String(100), nullable=True) 
+    
+    eventos_ideventos = db.Column(db.Integer, db.ForeignKey('eventos.ideventos'))
+    usuarios_idusuarios = db.Column(db.Integer, db.ForeignKey('usuarios.idusuarios'))
+
+    # Relacionamentos para puxar os dados de quem comentou de forma fácil
+    usuario = db.relationship('Usuario', backref='comentarios_feitos')
+    evento = db.relationship('Evento', backref=db.backref('comentarios_recebidos', lazy='dynamic'))
+
+# Tabela nova necessária para a regra "dar like em um comentário"
+class CurtidaComentario(db.Model):
+    __tablename__ = 'curtidas_comentarios'
+    idcurtida_comentario = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    comentarios_idcomentario = db.Column(db.Integer, db.ForeignKey('comentarios.idcomentario'))
+    usuarios_idusuarios = db.Column(db.Integer, db.ForeignKey('usuarios.idusuarios'))

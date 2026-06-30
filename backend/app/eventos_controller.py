@@ -1,4 +1,4 @@
-from app.models import Evento, Categoria, TipoIngresso, Lote, Curtida, db
+from app.models import Usuario, Comentario, Evento, Categoria, TipoIngresso, Lote, Curtida, db
 from sqlalchemy import func
 
 def obter_vitrine_eventos(filtros):
@@ -81,3 +81,81 @@ def obter_vitrine_eventos(filtros):
     }
 
     return resposta, 200
+
+def obter_detalhes_evento(id_evento):
+    evento = Evento.query.get(id_evento)
+    
+    if not evento:
+        return {"erro": "Evento não encontrado"}, 404
+
+    # Estruturando os ingressos dinamicamente
+    modalidades_ingresso = []
+    for tipo in evento.tipos_ingresso:
+        lotes_ativos = []
+        for lote in tipo.lotes:
+            lotes_ativos.append({
+                "numero_lote": lote.numero_lote,
+                "preco": float(lote.preco),
+                "esgotado": lote.quant_vendida >= lote.quant_total if lote.quant_total else False
+            })
+            
+        modalidades_ingresso.append({
+            "id_tipo": tipo.idtipo_ingresso,
+            "nome": tipo.nome,
+            "lotes": lotes_ativos
+        })
+
+    # Estruturando os comentários raiz
+    comentarios_lista = []
+    # Busca apenas comentários que não têm pai (ou seja, são a raiz)
+    comentarios_raiz = evento.comentarios_recebidos.filter(Comentario.comentariopai == None).all()
+    
+    for com in comentarios_raiz:
+        comentarios_lista.append({
+            "id": com.idcomentario,
+            "autor": com.usuario.nome,
+            "texto": com.texto,
+            "data": com.data.strftime('%d/%m/%Y %H:%M') if com.data else None
+            # Depois adicionaremos as respostas e likes aqui dentro
+        })
+
+    resposta = {
+        "id_evento": evento.ideventos,
+        "titulo": evento.nome,
+        "descricao": evento.descricao,
+        "data_inicio": evento.data_inicio.strftime('%d/%m/%Y %H:%M') if evento.data_inicio else None,
+        "localizacao": f"{evento.nome_local} - {evento.cidade}/{evento.estado}",
+        "quant_reacoes": evento.curtidas.count(),
+        "ingressos": modalidades_ingresso,
+        "comentarios": comentarios_lista
+    }
+
+    return resposta, 200
+
+# --- Endpoint: POST /api/eventos/:id/curtir ---
+def alternar_curtida_evento(id_evento, email_usuario):
+    evento = Evento.query.get(id_evento)
+    if not evento:
+        return {"erro": "Evento não encontrado"}, 404
+
+    usuario = Usuario.query.filter_by(email=email_usuario).first()
+    if not usuario:
+        return {"erro": "Usuário inválido"}, 401
+
+    # Verifica se a curtida já existe
+    curtida_existente = Curtida.query.filter_by(
+        eventos_ideventos=id_evento, 
+        usuarios_idusuarios=usuario.idusuarios
+    ).first()
+
+    if curtida_existente:
+        # Toggle: Se já curtiu, desfazer a curtida
+        db.session.delete(curtida_existente)
+        db.session.commit()
+        return {"message": "Curtida removida", "status_curtido": False}, 200
+    else:
+        # Toggle: Se não curtiu, registrar curtida
+        nova_curtida = Curtida(eventos_ideventos=id_evento, usuarios_idusuarios=usuario.idusuarios)
+        db.session.add(nova_curtida)
+        db.session.commit()
+        return {"message": "Evento curtido", "status_curtido": True}, 201
