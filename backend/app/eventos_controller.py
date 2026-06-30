@@ -1,61 +1,86 @@
+from datetime import datetime
+
 from app.models import Usuario, Comentario, Evento, Categoria, TipoIngresso, Lote, Curtida, db
 from sqlalchemy import func
 
+
 def obter_vitrine_eventos(filtros):
-    # Inicia a consulta base. Usamos outerjoin na Curtida para não excluir eventos sem likes.
+
     query = Evento.query.join(Categoria).outerjoin(Curtida)
 
-    # ... (MANTENHA OS FILTROS DA US 4 E US 3 EXATAMENTE COMO FIZEMOS ANTES) ...
+    # Filtro por status
     status_filtro = filtros.get('status')
     if status_filtro == "Ativos":
         query = query.filter(Evento.status == 'Publicado')
     elif status_filtro == "Finalizados":
         query = query.filter(Evento.status == 'Encerrado')
 
+    # Filtro por busca
     search_filtro = filtros.get('search')
     if search_filtro and len(search_filtro) >= 3:
         query = query.filter(Evento.nome.ilike(f"%{search_filtro}%"))
 
+    # Filtro por categoria
     categoria_filtro = filtros.get('categoria')
     if categoria_filtro:
         query = query.filter(Categoria.nome.ilike(f"%{categoria_filtro}%"))
 
-    # US 2: Regra de Ordenação (Peso)
-    # Agrupamos por evento e ordenamos PRIMEIRO pelo total de curtidas (DESC) e DEPOIS pela data mais próxima (ASC)
-    # US 2: Regra de Ordenação (Peso)
-    # Passamos todas as colunas da tabela Evento para o GROUP BY para satisfazer o MySQL
+    # Filtro por data (dd/mm/yyyy)
+    data_filtro = filtros.get('data_evento')
+    if data_filtro:
+        try:
+            data = datetime.strptime(data_filtro, '%d/%m/%Y').date()
+            query = query.filter(func.date(Evento.data_inicio) == data)
+        except ValueError:
+            return {"erro": "Data inválida. Use o formato dd/mm/yyyy"}, 400
+
+    # Ordenação
     query = query.group_by(*Evento.__table__.columns).order_by(
-        func.count(Curtida.idcurtidas).desc(), 
+        func.count(Curtida.idcurtidas).desc(),
         Evento.data_inicio.asc()
     )
-    
-    eventos_db = query.limit(30).all()
+
+    # Paginação
+    ITENS_POR_PAGINA = 30
+    pagina = int(filtros.get('pagina', 1))
+
+    paginacao = query.paginate(
+        page=pagina,
+        per_page=ITENS_POR_PAGINA,
+        error_out=False
+    )
+
+    eventos_db = paginacao.items
 
     resultados_formatados = []
+
     for evento in eventos_db:
-        # Lógica para encontrar o preço base (o menor preço do lote atual)
+
         preco_base = 0.00
         ingressos_vendidos = 0
         ingressos_totais = 0
-        
+
         for tipo in evento.tipos_ingresso:
             for lote in tipo.lotes:
-                # Pega o menor preço disponível
+
                 if preco_base == 0.00 or lote.preco < preco_base:
                     preco_base = float(lote.preco)
-                
-                # Soma para calcular a % de lotação da barra de progresso (AC 3)
-                if lote.quant_totais and lote.quant_vendida:
-                    ingressos_totais += lote.quant_totais
+
+                # Ajuste aqui caso o nome correto da coluna seja quant_total
+                if lote.quant_total and lote.quant_vendida:
+                    ingressos_totais += lote.quant_total
                     ingressos_vendidos += lote.quant_vendida
-        
-        # Calcula a porcentagem de vendas
-        porcen_vend = int((ingressos_vendidos / ingressos_totais) * 100) if ingressos_totais > 0 else 0
+
+        porcen_vend = (
+            int((ingressos_vendidos / ingressos_totais) * 100)
+            if ingressos_totais > 0
+            else 0
+        )
 
         resultados_formatados.append({
             "id_evento": evento.ideventos,
             "titulo": evento.nome,
-            "preco": preco_base, 
+            "preco": preco_base,
             "status": 1 if evento.status == 'Publicado' else 3,
             "porcen_vend": porcen_vend,
             "categoria": evento.categoria.nome if evento.categoria else "Sem categoria",
@@ -68,14 +93,15 @@ def obter_vitrine_eventos(filtros):
                 "cidade": evento.cidade,
                 "estado": evento.estado
             },
-            # Conta as curtidas deste evento específico
-            "quant_reacoes": evento.curtidas.count() 
+            "quant_reacoes": evento.curtidas.count()
         })
 
     resposta = {
         "paginacao": {
-            "pagina": 1,
-            "qntd_item_pag": len(resultados_formatados)
+            "pagina": pagina,
+            "qntd_item_pag": ITENS_POR_PAGINA,
+            "total_itens": paginacao.total,
+            "total_paginas": paginacao.pages
         },
         "eventos": resultados_formatados
     }
