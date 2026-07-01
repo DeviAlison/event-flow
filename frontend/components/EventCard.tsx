@@ -1,5 +1,5 @@
-export default function EventCard({ evento }) {
-  const getTheme = (categoria) => {
+export default function EventCard({ evento, onViewDetails }: { evento: any; onViewDetails: () => void }) {
+  const getTheme = (categoria: string | undefined) => {
     switch (categoria?.toLowerCase()) {
       case 'hackathon':
         return { capa: 'bg-gradient-to-br from-indigo-200 to-purple-200', tag: 'bg-pink-100 text-pink-700', barra: 'bg-pink-500', texto: 'text-pink-600' };
@@ -74,7 +74,11 @@ export default function EventCard({ evento }) {
             <span className={`text-xl font-extrabold ${theme.texto}`}>
               {evento.preco ? `R$ ${evento.preco}` : 'Grátis'}
             </span>
-            <button className={`px-4 py-2 rounded-lg text-sm font-bold bg-slate-50 hover:bg-slate-100 transition-colors ${theme.texto}`}>
+            <button
+              type="button"
+              onClick={onViewDetails}
+              className={`px-4 py-2 rounded-lg text-sm font-bold bg-slate-50 hover:bg-slate-100 transition-colors ${theme.texto}`}
+            >
               Ver detalhes
             </button>
           </div>

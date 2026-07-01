@@ -34,12 +34,21 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
 
     return (
         <>
+            {/* Backdrop para mobile */}
+            {open && (
+                <div
+                    onClick={() => onToggle(false)}
+                    className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-30 md:hidden transition-opacity"
+                />
+            )}
+
             {/* Sidebar */}
             <aside
                 className={`
                     shrink-0 bg-white rounded-2xl shadow-sm border border-slate-200
-                    flex flex-col p-6 overflow-y-auto z-20
+                    flex flex-col p-6 overflow-y-auto z-40
                     transition-all duration-300 ease-in-out
+                    fixed md:relative h-full md:h-auto left-0 top-0
                     ${open ? "w-64 opacity-100 translate-x-0" : "w-0 p-0 border-0 opacity-0 -translate-x-4 pointer-events-none"}
                 `}
             >

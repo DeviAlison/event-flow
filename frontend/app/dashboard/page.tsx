@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSidebar } from "@/providers/SidebarProvider";
 import EventCard from "@/components/EventCard";
+import EventDetailsModal from "@/components/EventDetailsModal";
 import Header from "@/components/Header";
 import FilterTabs from "@/components/FilterTabs";
 
@@ -15,6 +16,7 @@ type EventosCacheEntry = {
 export default function Dashboard() {
   // Estados para armazenar os dados da API
   const [eventos, setEventos] = useState([]);
+  const [eventoSelecionado, setEventoSelecionado] = useState<any | null>(null);
   const [paginacao, setPaginacao] = useState({ pagina: 1, qntd_item_pag: 30 });
   const [loading, setLoading] = useState(true);
   
@@ -107,7 +109,7 @@ export default function Dashboard() {
   // Heurística de fim de página: se o backend enviou menos itens do que o limite, a página atual é a última
   const ehUltimaPagina = eventos.length < paginacao.qntd_item_pag;
 
-  const gridColumns = sidebarOpen ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-4";
+  const gridColumns = sidebarOpen ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-4";
 
   return (
     <>
@@ -134,7 +136,11 @@ export default function Dashboard() {
         ) : (
           <div className={`grid ${gridColumns} gap-6 transition-all duration-500 ease-in-out`}>
             {eventos.map((evento: any) => (
-              <EventCard key={evento.id_evento} evento={evento} />
+              <EventCard
+                key={evento.id_evento}
+                evento={evento}
+                onViewDetails={() => setEventoSelecionado(evento)}
+              />
             ))}
           </div>
         )
@@ -144,29 +150,36 @@ export default function Dashboard() {
 
       {/* Componente de Barra de Paginação */}
       {!loading && eventos.length > 0 && (
-        <div className="flex items-center justify-between border-t border-slate-100 pt-6 mt-8">
+        <div className="flex items-center justify-between border-t border-slate-100 pt-4 md:pt-6 mt-6 md:mt-8">
           <button
             onClick={() => setPaginaAtual((prev) => Math.max(prev - 1, 1))}
             disabled={paginaAtual === 1}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+            className="flex items-center gap-2 px-3 md:px-4 py-2 border border-slate-200 rounded-xl text-xs md:text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
           >
             <i className="bi bi-chevron-left"></i>
-            Anterior
+            <span className="hidden sm:inline">Anterior</span>
           </button>
 
-          <span className="text-sm font-semibold text-slate-600">
+          <span className="text-xs md:text-sm font-semibold text-slate-600">
             Página {paginaAtual}
           </span>
 
           <button
             onClick={() => setPaginaAtual((prev) => prev + 1)}
             disabled={ehUltimaPagina}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
+            className="flex items-center gap-2 px-3 md:px-4 py-2 border border-slate-200 rounded-xl text-xs md:text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-colors"
           >
-            Próxima
+            <span className="hidden sm:inline">Próxima</span>
             <i className="bi bi-chevron-right"></i>
           </button>
         </div>
+      )}
+
+      {eventoSelecionado && (
+        <EventDetailsModal
+          evento={eventoSelecionado}
+          onClose={() => setEventoSelecionado(null)}
+        />
       )}
     </>
   );

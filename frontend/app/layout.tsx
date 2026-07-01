@@ -18,6 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Event Flow",
   description: "Sistema de gerenciamento de eventos",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
   icons: {
     icon: "/logo_fundo.png", 
   },
