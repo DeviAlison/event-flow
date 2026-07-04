@@ -32,6 +32,7 @@ class Evento(db.Model):
     nome = db.Column(db.String(45))
     descricao = db.Column(db.String(500))
     data_inicio = db.Column(db.DateTime)
+    imagem_url = db.Column(db.String(255))
     nome_local = db.Column(db.String(45))
     endereco = db.Column(db.String(45))
     numero_end = db.Column(db.Integer)

@@ -10,11 +10,20 @@ def obter_vitrine_eventos(filtros):
 
     # Filtro por status
     status_filtro = filtros.get('status')
+
     if status_filtro == "Ativos":
         query = query.filter(Evento.status == 'Publicado')
+
     elif status_filtro == "Finalizados":
         query = query.filter(Evento.status == 'Encerrado')
 
+    elif status_filtro == "No Radar":
+        query = query.filter(
+            Evento.data_inicio.is_(None)
+        ).filter(
+            (Evento.nome_local.is_(None)) |
+            (Evento.nome_local == '')
+        )
     # Filtro por busca
     search_filtro = filtros.get('search')
     if search_filtro and len(search_filtro) >= 3:
@@ -80,6 +89,7 @@ def obter_vitrine_eventos(filtros):
         resultados_formatados.append({
             "id_evento": evento.ideventos,
             "titulo": evento.nome,
+            "imagem": evento.imagem_url,
             "preco": preco_base,
             "status": 1 if evento.status == 'Publicado' else 3,
             "porcen_vend": porcen_vend,
