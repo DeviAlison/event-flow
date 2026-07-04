@@ -6,6 +6,7 @@ import EventCard from "@/components/EventCard";
 import EventDetailsModal from "@/components/EventDetailsModal";
 import Header from "@/components/Header";
 import FilterTabs from "@/components/FilterTabs";
+import { apiFetch } from "@/lib/api";
 
 // Estrutura de cada entrada armazenada no cache de buscas
 type EventosCacheEntry = {
@@ -35,7 +36,7 @@ export default function Dashboard() {
     setPaginaAtual(1);
   }, [search, status]);
 
-  // Efeito responsável por buscar os dados no backend falso (/api/eventos)
+  // Efeito responsável por buscar os dados no backend real (/eventos)
   // Inclui: debounce maior, minLength, cache em memória e cancelamento via AbortController
   useEffect(() => {
     // Normaliza o termo de busca (mesma regra aplicada pelo backend) para melhorar o hit rate do cache
@@ -69,16 +70,8 @@ export default function Dashboard() {
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       try {
-        // Fazendo a requisição para a rota interna do Next.js
-        const response = await fetch(`/api/eventos?${cacheKey}`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error("Falha ao buscar eventos");
-        }
-
-        const data = await response.json();
+        // Fazendo a requisição para o backend real
+        const data = await apiFetch<{ eventos: any[]; paginacao: { pagina: number; qntd_item_pag: number } }>(`/eventos?${cacheKey}`);
         const novosEventos = data.eventos || [];
         const novaPaginacao = data.paginacao || paginacao;
 

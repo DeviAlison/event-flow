@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { apiFetch } from "@/lib/api";
 
 export default function EsqueciSenha() {
     const router = useRouter();
@@ -32,24 +33,18 @@ export default function EsqueciSenha() {
         setCarregando(true);
 
         try {
-            const res = await fetch("/api/auth/esqueci-senha", {
+            await apiFetch("/esqueci-senha", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ acao: "enviar_codigo", email }),
+                body: { email },
             });
-            const data = await res.json();
 
-            if (res.ok) {
-                setMensagem(data.mensagem);
-                setTimeout(() => {
-                    limparMensagens();
-                    setEtapa(2); // Avança para o ecrã do código
-                }, 1500);
-            } else {
-                setErro(data.erro);
-            }
-        } catch {
-            setErro("Erro de ligação. Tente novamente.");
+            setMensagem("Código de recuperação enviado para o seu e-mail.");
+            setTimeout(() => {
+                limparMensagens();
+                setEtapa(2);
+            }, 1500);
+        } catch (err) {
+            setErro((err as Error)?.message || "Erro de ligação. Tente novamente.");
         } finally {
             setCarregando(false);
         }
@@ -68,24 +63,18 @@ export default function EsqueciSenha() {
         setCarregando(true);
 
         try {
-            const res = await fetch("/api/auth/esqueci-senha", {
+            await apiFetch("/esqueci-senha", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ acao: "validar_codigo", email, codigo }),
+                body: { email, codigo },
             });
-            const data = await res.json();
 
-            if (res.ok) {
-                setMensagem(data.mensagem);
-                setTimeout(() => {
-                    limparMensagens();
-                    setEtapa(3); // Avança para o ecrã da nova senha
-                }, 1500);
-            } else {
-                setErro(data.erro);
-            }
-        } catch {
-            setErro("Erro de ligação. Tente novamente.");
+            setMensagem("Código válido. Agora crie uma nova senha.");
+            setTimeout(() => {
+                limparMensagens();
+                setEtapa(3);
+            }, 800);
+        } catch (err) {
+            setErro((err as Error)?.message || "Erro ao validar o código. Tente novamente.");
         } finally {
             setCarregando(false);
         }
@@ -104,23 +93,17 @@ export default function EsqueciSenha() {
         setCarregando(true);
 
         try {
-            const res = await fetch("/api/auth/esqueci-senha", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ acao: "redefinir_senha", email, novaSenha }),
+            await apiFetch("/redefinir-senha", {
+                method: "PUT",
+                body: { email, codigo, senha: novaSenha },
             });
-            const data = await res.json();
 
-            if (res.ok) {
-                setMensagem("A sua senha foi alterada com sucesso! A redirecionar...");
-                setTimeout(() => {
-                    router.push("/login");
-                }, 2500);
-            } else {
-                setErro(data.erro);
-            }
-        } catch {
-            setErro("Erro de ligação. Tente novamente.");
+            setMensagem("A sua senha foi alterada com sucesso! A redirecionar...");
+            setTimeout(() => {
+                router.push("/login");
+            }, 2500);
+        } catch (err) {
+            setErro((err as Error)?.message || "Erro de ligação. Tente novamente.");
         } finally {
             setCarregando(false);
         }

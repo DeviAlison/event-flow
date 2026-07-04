@@ -68,7 +68,7 @@ export default function Login() {
 
         <h2 className="text-2xl font-bold text-center text-slate-900 mb-2 mt-2">Acesse sua conta</h2>
 
-        <p className="text-center text-sm text-slate-600 mb-4">Use as credenciais de teste: <strong>admin@teste.com</strong> / <strong>123456</strong></p>
+        <p className="text-center text-sm text-slate-600 mb-4">Digite suas credenciais para acessar a conta.</p>
         <form onSubmit={fazerLogin} className="relative flex flex-col gap-5 pb-24">
 
           <div>

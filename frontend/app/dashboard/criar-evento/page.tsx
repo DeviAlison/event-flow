@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 export default function CriarEvento() {
   const router = useRouter();
@@ -40,22 +41,27 @@ export default function CriarEvento() {
     setCarregando(true);
 
     try {
-      const resposta = await fetch("/api/eventos", {
+      await apiFetch("/eventos", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome, descricao, dataInicio, dataFim, nomeLocal, endereco, numero, cidade, estado, quantPessoas, imagem
-        }),
+        body: {
+          nome,
+          descricao,
+          data_inicio: dataInicio || undefined,
+          data_fim: dataFim || undefined,
+          nome_local: nomeLocal,
+          endereco,
+          numero: numero ? Number(numero) : undefined,
+          cidade,
+          estado,
+          quant_pessoas: quantPessoas ? Number(quantPessoas) : undefined,
+          imagem,
+        },
       });
 
-      if (resposta.ok) {
-        setMensagem("Evento criado com sucesso!");
-        setTimeout(() => router.push("/dashboard"), 2000);
-      } else {
-        setErro("Erro ao criar o evento.");
-      }
+      setMensagem("Evento criado com sucesso!");
+      setTimeout(() => router.push("/dashboard"), 2000);
     } catch (err) {
-      setErro("Falha na comunicação com o servidor.");
+      setErro((err as Error)?.message || "Falha na comunicação com o servidor.");
     } finally {
       setCarregando(false);
     }

@@ -1,9 +1,12 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { apiFetch, getStoredAuth, setStoredAuth, clearStoredAuth, type StoredAuth } from "@/lib/api";
 
 type AuthUser = {
   email: string;
+  nome?: string;
+  sobrenome?: string;
 };
 
 type AuthContextValue = {
@@ -12,8 +15,6 @@ type AuthContextValue = {
   login: (email: string, senha: string) => Promise<boolean>;
   logout: () => void;
 };
-
-const STORAGE_KEY = "eventflow-auth";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -26,47 +27,57 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    const stored = getStoredAuth();
+    if (!stored?.token) {
       return;
     }
 
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(stored) as AuthUser;
-      if (parsed?.email) {
-        setUser(parsed);
-        setIsAuthenticated(true);
-      }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
+    setUser({
+      email: stored.email,
+      nome: stored.nome,
+      sobrenome: stored.sobrenome,
+    });
+    setIsAuthenticated(true);
   }, []);
 
   const login = useCallback(async (email: string, senha: string) => {
-    const isValid = email === "admin@teste.com" && senha === "123456";
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    try {
+      const data = await apiFetch<{
+        token?: string;
+        access_token?: string;
+        nome?: string;
+        sobrenome?: string;
+        email?: string;
+      }>("/login", {
+        method: "POST",
+        body: { email, senha },
+      });
 
-    if (isValid) {
-      const authUser = { email };
-      setUser(authUser);
+      const token = data.token ?? data.access_token;
+      if (!token) {
+        return false;
+      }
+
+      const auth: StoredAuth = {
+        token,
+        email: data.email ?? email,
+        nome: data.nome,
+        sobrenome: data.sobrenome,
+      };
+
+      setStoredAuth(auth);
+      setUser({ email: auth.email, nome: auth.nome, sobrenome: auth.sobrenome });
       setIsAuthenticated(true);
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
       return true;
+    } catch {
+      return false;
     }
-
-    return false;
   }, []);
 
   const logout = useCallback(() => {
     setIsAuthenticated(false);
     setUser(null);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
+    clearStoredAuth();
   }, []);
 
   const value = useMemo(

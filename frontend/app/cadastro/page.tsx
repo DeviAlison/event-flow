@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { apiFetch } from "@/lib/api";
 
 export default function Cadastro() {
   const router = useRouter();
@@ -44,32 +45,28 @@ export default function Cadastro() {
     setCarregando(true);
 
     try {
-      // Apontando para a nossa rota simulada no Next.js
-      const resposta = await fetch("/api/auth/cadastro", {
+      const [primeiroNome, ...resto] = nome.trim().split(" ");
+      const sobrenome = resto.join(" ") || primeiroNome;
+
+      await apiFetch("/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nome,
+          nome: primeiroNome,
+          sobrenome,
           email,
           senha,
           telefone,
-          tipoPessoa,
-          documento: tipoPessoa === "pf" ? cpf : cnpj,
+          tipo_conta: tipoPessoa,
+          ...(tipoPessoa === "pf" ? { cpf } : { cnpj }),
         }),
       });
 
-      const dados = await resposta.json();
-
-      if (resposta.ok) {
-        setMensagem("Cadastro realizado com sucesso! Redirecionando...");
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000);
-      } else {
-        setErro(dados.erro || "Erro ao realizar cadastro.");
-      }
+      setMensagem("Cadastro realizado com sucesso! Redirecionando...");
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
     } catch (err) {
-      setErro("Erro de conexão com o servidor.");
+      setErro((err as Error)?.message || "Erro de conexão com o servidor.");
     } finally {
       setCarregando(false);
     }
