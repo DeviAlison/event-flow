@@ -1,9 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
+
+type SubCategoria = { id: number; nome: string };
+type Categoria = { id_categoria: number; nome: string; subcategorias: SubCategoria[] };
+
+// O back-end espera "DD/MM/YYYY HH:MM" (datetime.strptime),
+// enquanto <input type="datetime-local"> devolve algo como "2026-07-07T14:30".
+function toBackendDate(isoLocal: string): string | undefined {
+  if (!isoLocal) return undefined;
+  const [datePart, timePart] = isoLocal.split("T");
+  if (!datePart || !timePart) return undefined;
+  const [ano, mes, dia] = datePart.split("-");
+  return `${dia}/${mes}/${ano} ${timePart}`;
+}
 
 export default function CriarEvento() {
   const router = useRouter();
@@ -21,8 +34,22 @@ export default function CriarEvento() {
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
   const [quantPessoas, setQuantPessoas] = useState("");
-  
+
   const [imagem, setImagem] = useState("");
+
+  // Categoria/Subcategoria — obrigatório no back-end (sub_categoria_id)
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriaId, setCategoriaId] = useState("");
+  const [subCategoriaId, setSubCategoriaId] = useState("");
+
+  useEffect(() => {
+    apiFetch<{ categorias: Categoria[] }>("/api/dominios")
+      .then((data) => setCategorias(data.categorias || []))
+      .catch(() => setErro("Não foi possível carregar as categorias."));
+  }, []);
+
+  const subcategoriasDaCategoria =
+    categorias.find((c) => String(c.id_categoria) === categoriaId)?.subcategorias || [];
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,6 +65,19 @@ export default function CriarEvento() {
   const handleSubmit = async (evento: React.FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
     setErro("");
+
+    if (!subCategoriaId) {
+      setErro("Selecione uma categoria e subcategoria.");
+      return;
+    }
+
+    // O back-end só publica como "Evento Ativo" se HOUVER data de início E nome do local
+    // ao mesmo tempo. Faltando qualquer um dos dois, ele salva como "No Radar" e
+    // zera endereço/cidade/estado/capacidade — mesmo que tenham sido preenchidos aqui.
+    const dataInicioFormatada = toBackendDate(dataInicio);
+    const dataFimFormatada = toBackendDate(dataFim);
+    const viraNoRadar = !dataInicioFormatada || !nomeLocal.trim();
+
     setCarregando(true);
 
     try {
@@ -46,19 +86,24 @@ export default function CriarEvento() {
         body: {
           nome,
           descricao,
-          data_inicio: dataInicio || undefined,
-          data_fim: dataFim || undefined,
+          sub_categoria_id: Number(subCategoriaId),
+          data_inicio: dataInicioFormatada,
+          data_encerramento: dataFimFormatada,
           nome_local: nomeLocal,
           endereco,
-          numero: numero ? Number(numero) : undefined,
+          numero_end: numero ? Number(numero) : undefined,
           cidade,
           estado,
           quant_pessoas: quantPessoas ? Number(quantPessoas) : undefined,
-          imagem,
+          imagem_url: imagem || undefined,
         },
       });
 
-      setMensagem("Evento criado com sucesso!");
+      setMensagem(
+        viraNoRadar
+          ? "Evento salvo como \"No Radar\" (faltou data de início e/ou nome do local para publicar como ativo)."
+          : "Evento criado com sucesso!"
+      );
       setTimeout(() => router.push("/dashboard"), 2000);
     } catch (err) {
       setErro((err as Error)?.message || "Falha na comunicação com o servidor.");
@@ -101,20 +146,43 @@ export default function CriarEvento() {
               <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Descrição</label>
               <textarea rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" placeholder="Detalhes, cronograma, palestrantes..." />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+              <div>
+                <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Categoria *</label>
+                <select required value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setSubCategoriaId(""); }} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base">
+                  <option value="">Selecione...</option>
+                  {categorias.map((c) => (
+                    <option key={c.id_categoria} value={c.id_categoria}>{c.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Subcategoria *</label>
+                <select required disabled={!categoriaId} value={subCategoriaId} onChange={(e) => setSubCategoriaId(e.target.value)} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base disabled:bg-slate-50 disabled:text-slate-400">
+                  <option value="">Selecione...</option>
+                  {subcategoriasDaCategoria.map((s) => (
+                    <option key={s.id} value={s.id}>{s.nome}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="bg-orange-50/40 border border-orange-100 rounded-2xl p-4 md:p-6 shadow-sm">
-          <h3 className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-4 md:mb-5 flex items-center gap-2">
+          <h3 className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1.5 flex items-center gap-2">
             <i className="bi bi-calendar-event text-base"></i> Data e Hora
           </h3>
+          <p className="text-xs text-slate-500 mb-4 md:mb-5">
+            Para publicar como evento Ativo, preencha a data de início <strong>e</strong> o Nome do Local (abaixo). Faltando um dos dois, o evento é salvo como &quot;No Radar&quot;.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
             <div>
-              <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Início (Opcional)</label>
+              <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Início</label>
               <input type="datetime-local" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" />
             </div>
             <div>
-              <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Encerramento (Opcional)</label>
+              <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Encerramento</label>
               <input type="datetime-local" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" />
             </div>
           </div>
@@ -131,8 +199,8 @@ export default function CriarEvento() {
             </div>
             <div className="md:col-span-2 flex gap-3 md:gap-4">
               <div className="flex-1">
-                <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Endereço (Rua/Av) *</label>
-                <input type="text" required value={endereco} onChange={(e) => setEndereco(e.target.value)} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" />
+                <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Endereço (Rua/Av)</label>
+                <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" />
               </div>
               <div className="w-20 md:w-28">
                 <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Número</label>
@@ -140,12 +208,12 @@ export default function CriarEvento() {
               </div>
             </div>
             <div>
-              <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Cidade *</label>
-              <input type="text" required value={cidade} onChange={(e) => setCidade(e.target.value)} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" />
+              <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Cidade</label>
+              <input type="text" value={cidade} onChange={(e) => setCidade(e.target.value)} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" />
             </div>
             <div>
-              <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Estado (UF) *</label>
-              <input type="text" required maxLength={2} value={estado} onChange={(e) => setEstado(e.target.value.toUpperCase())} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" placeholder="MG" />
+              <label className="block text-xs md:text-sm font-semibold text-slate-700 mb-1.5">Estado (UF)</label>
+              <input type="text" maxLength={2} value={estado} onChange={(e) => setEstado(e.target.value.toUpperCase())} className="w-full px-3 md:px-4 py-2 md:py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all shadow-sm text-sm md:text-base" placeholder="MG" />
             </div>
             
             <div className="pt-2 md:col-span-2">

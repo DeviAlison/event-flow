@@ -75,7 +75,7 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
                     <Link href="/dashboard/criar-evento" onClick={handleRestrictedClick} className={getLinkClass("/dashboard/criar-evento")}>
                         <i className="bi bi-plus-square"></i> Criar Evento
                     </Link>
-                    <Link href="/dashboard/" onClick={handleRestrictedClick} className={getLinkClass("/dashboard/")}>
+                    <Link href="/dashboard/meus-eventos" onClick={handleRestrictedClick} className={getLinkClass("/dashboard/meus-eventos")}>
                         <i className="bi bi-calendar-event"></i> Meus Eventos
                     </Link>
                     <Link href="/dashboard/" onClick={handleRestrictedClick} className={getLinkClass("/dashboard/")}>

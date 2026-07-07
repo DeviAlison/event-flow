@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -12,15 +13,23 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function formatStatus(status: number) {
+// O backend já manda o status como texto pronto ("Publicado", "Encerrado", "Esgotado").
+// Mantemos o fallback numérico só por segurança, caso algum dado antigo/mockado chegue aqui.
+function formatStatus(status: number | string) {
+  if (typeof status === "string") return status;
   if (status === 1) return "Ativo";
   if (status === 2) return "No Radar";
   return "Finalizado";
 }
 
-function formatLocation(endereco: any) {
-  if (!endereco) return "Local a definir";
-  return `${endereco.local}, ${endereco.rua}, ${endereco.cidade} - ${endereco.estado}`;
+// obter_detalhes_evento já retorna "localizacao" pronta (string única).
+function formatLocation(evento: any) {
+  if (evento?.localizacao) return evento.localizacao;
+  if (evento?.endereco) {
+    const e = evento.endereco;
+    return `${e.local}, ${e.rua}, ${e.cidade} - ${e.estado}`;
+  }
+  return "Local a definir";
 }
 
 function parseDescription(descricao: string) {
@@ -52,18 +61,18 @@ function parseDescription(descricao: string) {
 }
 
 function getDefaultHypeCount(evento: any): number {
-  if (typeof evento.hype_count === "number") return evento.hype_count;
-  if (evento.reacoes && typeof evento.reacoes === "object") {
+  if (typeof evento?.hype_count === "number") return evento.hype_count;
+  if (evento?.reacoes && typeof evento.reacoes === "object") {
     return Object.values(evento.reacoes as Record<string, number>).reduce(
       (sum: number, count) => sum + (Number(count) || 0),
       0
     );
   }
-  return evento.quant_reacoes || 0;
+  return evento?.quant_reacoes || 0;
 }
 
 function getDefaultComments(evento: any) {
-  if (Array.isArray(evento.comentarios) && evento.comentarios.length > 0) {
+  if (Array.isArray(evento?.comentarios) && evento.comentarios.length > 0) {
     return evento.comentarios;
   }
   return [];
@@ -86,26 +95,87 @@ function addReplyToTree(comments: any[], parentId: number, reply: any): any[] {
   });
 }
 
-export default function EventDetailsModal({ evento, onClose }: { evento: any; onClose: () => void }) {
+// Monta as opções de ingresso (variacoesIngressos) a partir de
+// evento.modalidades_ingresso (formato retornado por obter_detalhes_evento).
+// Cada tipo de ingresso pode ter vários lotes; só mostramos os lotes ainda
+// não esgotados.
+function buildVariacoesIngressos(evento: any) {
+  if (!Array.isArray(evento?.modalidades_ingresso)) return [];
+
+  const opcoes: Array<{ id: number; nome: string; preco: number; descricao: string }> = [];
+
+  evento.modalidades_ingresso.forEach((tipo: any) => {
+    (tipo.lotes || [])
+      .filter((lote: any) => !lote.esgotado)
+      .forEach((lote: any) => {
+        opcoes.push({
+          id: lote.id_lote,
+          nome: `${tipo.nome} • Lote ${lote.numero_lote}`,
+          preco: lote.preco,
+          descricao: tipo.descricao,
+        });
+      });
+  });
+
+  return opcoes;
+}
+
+export default function EventDetailsModal({ evento: eventoResumo, onClose }: { evento: any; onClose: () => void }) {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const [activeImage, setActiveImage] = useState(0);
   const [commentText, setCommentText] = useState("");
   const [replyToId, setReplyToId] = useState<number | null>(null);
-  const [comments, setComments] = useState(() => getDefaultComments(evento));
-  const [hypeCount, setHypeCount] = useState<number>(() => getDefaultHypeCount(evento));
+  const [comments, setComments] = useState(() => getDefaultComments(eventoResumo));
+  const [hypeCount, setHypeCount] = useState<number>(() => getDefaultHypeCount(eventoResumo));
   const [hasHyped, setHasHyped] = useState(false);
+  const [hypeLoading, setHypeLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [postingComment, setPostingComment] = useState(false);
+  const [erroComentario, setErroComentario] = useState("");
+
+  // Detalhes completos vindos de GET /api/eventos/<id> (obter_detalhes_evento).
+  // O objeto que chega pela listagem (eventoResumo) não tem descrição completa,
+  // ingressos por lote nem comentários — por isso buscamos os detalhes reais
+  // assim que o modal abre.
+  const [detalhes, setDetalhes] = useState<any | null>(null);
+  const [loadingDetalhes, setLoadingDetalhes] = useState(true);
+  const [erroDetalhes, setErroDetalhes] = useState("");
+
+  const idEvento = eventoResumo.id_evento;
 
   useEffect(() => {
     setActiveImage(0);
     setCommentText("");
     setReplyToId(null);
-    setComments(getDefaultComments(evento));
-    setHypeCount(getDefaultHypeCount(evento));
-    setHasHyped(false);
     setIsClosing(false);
-  }, [evento.id_evento]);
+    setErroComentario("");
+    setDetalhes(null);
+    setLoadingDetalhes(true);
+    setErroDetalhes("");
+
+    let cancelado = false;
+
+    apiFetch<any>(`/eventos/${idEvento}`)
+      .then((data) => {
+        if (cancelado) return;
+        setDetalhes(data);
+        setComments(getDefaultComments(data));
+        setHypeCount(getDefaultHypeCount(data));
+        setHasHyped(false); // o backend não informa se o usuário logado já curtiu
+      })
+      .catch((err) => {
+        if (cancelado) return;
+        setErroDetalhes((err as Error)?.message || "Não foi possível carregar os detalhes do evento.");
+      })
+      .finally(() => {
+        if (!cancelado) setLoadingDetalhes(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [idEvento]);
 
   const handleClose = () => {
     setIsClosing(true);
@@ -114,47 +184,36 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
     }, 180);
   };
 
+  // Enquanto os detalhes carregam, usamos o resumo só para não deixar a tela em branco.
+  const evento = detalhes ?? eventoResumo;
+
   const imagens = useMemo(() => {
     if (evento.imagens?.length > 0) return evento.imagens;
+    if (evento.imagem_url) return [evento.imagem_url];
     if (evento.imagem) return [evento.imagem];
     return [
       "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=1200&q=80",
     ];
-  }, [evento.imagens, evento.imagem]);
+  }, [evento.imagens, evento.imagem_url, evento.imagem]);
 
-  const variacoesIngressos = evento.variacoes_ingressos || [
-    {
-      id: `${evento.id_evento}-pista`,
-      nome: "Pista",
-      preco: evento.preco ?? 0,
-      descricao: "Entrada geral com a melhor relação custo-benefício.",
-    },
-    {
-      id: `${evento.id_evento}-vip`,
-      nome: "VIP",
-      preco: evento.preco ? evento.preco * 1.8 : 120,
-      descricao: "Vagas limitadas com área exclusiva e atendimento premium.",
-    },
-  ];
+  const variacoesIngressos = useMemo(() => buildVariacoesIngressos(detalhes), [detalhes]);
 
-  const ingressosDisponiveis = evento.ingressos_disponiveis ?? 120;
-  const ingressosTotais = evento.ingressos_totais ?? 200;
-  const disponibilidade = Math.min(100, Math.round((ingressosDisponiveis / ingressosTotais) * 100));
+  const ingressosDisponiveis = evento.ingressos_disponiveis ?? 0;
+  const ingressosTotais = evento.ingressos_totais ?? 0;
+  const disponibilidade = ingressosTotais > 0
+    ? Math.min(100, Math.round((ingressosDisponiveis / ingressosTotais) * 100))
+    : 0;
 
-  const descricao = evento.descricao || evento.descricao_long ||
-    `Conheça todos os detalhes do evento e aproveite uma experiência única.
-- Som de qualidade e estrutura completa.
-- Drinks e alimentação disponíveis.
-- Networking e conexão com profissionais da área.`;
-
+  const descricao = evento.descricao || evento.descricao_long || "";
   const descricaoPartes = parseDescription(descricao);
 
-  const subgenero = evento.subgenero
-    ? `${evento.categoria} > ${evento.subgenero}`
-    : evento.categoria;
+  // "categoria" já vem pronta do backend como "Categoria > Gênero".
+  const subgenero = evento.categoria || "";
+
+  const precoBase = evento.preco ?? evento.preco_base;
 
   const handleCheckout = (ticket: any) => {
-    router.push(`/dashboard/checkout?eventId=${evento.id_evento}&ticketId=${ticket.id}`);
+    router.push(`/dashboard/checkout?eventId=${idEvento}&ticketId=${ticket.id}`);
   };
 
   const handleAuthRedirect = (path: string) => {
@@ -162,32 +221,61 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
     router.push(path);
   };
 
-  const handleHype = () => {
-    if (!isAuthenticated) return;
+  // Alterna a curtida do evento via POST /api/eventos/<id>/curtir.
+  // Observação: como o GET de detalhes não informa se o usuário já curtiu
+  // antes, hasHyped sempre começa como false ao abrir o modal — o toggle
+  // reflete corretamente a partir do primeiro clique nesta sessão.
+  const handleHype = async () => {
+    if (!isAuthenticated || hypeLoading) return;
 
-    const next = !hasHyped;
-    setHasHyped(next);
-    setHypeCount((current) => Math.max(0, current + (next ? 1 : -1)));
+    setHypeLoading(true);
+    try {
+      const resposta = await apiFetch<{ status_curtido: boolean }>(`/eventos/${idEvento}/curtir`, {
+        method: "POST",
+      });
+      const curtido = resposta.status_curtido;
+      setHasHyped(curtido);
+      setHypeCount((atual) => Math.max(0, atual + (curtido ? 1 : -1)));
+    } catch (err) {
+      console.error("Erro ao curtir evento:", err);
+    } finally {
+      setHypeLoading(false);
+    }
   };
 
-  const handleSubmitComment = () => {
-    if (!isAuthenticated || !commentText.trim()) return;
-    const nextComment = {
-      id: Date.now(),
-      autor: user?.email?.split("@")[0] || "Você",
-      mensagem: commentText.trim(),
-      criadoEm: "Agora",
-      respostas: [],
-    };
+  // Publica um comentário (ou resposta) via POST /api/eventos/<id>/comentarios.
+  const handleSubmitComment = async () => {
+    if (!isAuthenticated || !commentText.trim() || postingComment) return;
 
-    if (replyToId) {
-      setComments((prev: any[]) => addReplyToTree(prev, replyToId, nextComment));
-    } else {
-      setComments((prev: any[]) => [nextComment, ...prev]);
+    setPostingComment(true);
+    setErroComentario("");
+
+    try {
+      const payload: { texto: string; comentario_pai_id?: number } = {
+        texto: commentText.trim(),
+      };
+      if (replyToId) payload.comentario_pai_id = replyToId;
+
+      const resposta = await apiFetch<{ comentario: any }>(`/eventos/${idEvento}/comentarios`, {
+        method: "POST",
+        body: payload,
+      });
+
+      const novoComentario = { ...resposta.comentario, respostas: [] };
+
+      if (replyToId) {
+        setComments((prev: any[]) => addReplyToTree(prev, replyToId, novoComentario));
+      } else {
+        setComments((prev: any[]) => [novoComentario, ...prev]);
+      }
+
+      setCommentText("");
+      setReplyToId(null);
+    } catch (err) {
+      setErroComentario((err as Error)?.message || "Não foi possível publicar o comentário.");
+    } finally {
+      setPostingComment(false);
     }
-
-    setCommentText("");
-    setReplyToId(null);
   };
 
   const handleCommentKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -212,7 +300,7 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
             <p className="text-sm font-semibold text-slate-900">{comment.autor}</p>
-            <p className="text-xs text-slate-400">{comment.criadoEm}</p>
+            <p className="text-xs text-slate-400">{comment.data}</p>
           </div>
           <button
             type="button"
@@ -223,7 +311,7 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
             Responder
           </button>
         </div>
-        <p className="text-sm text-slate-700 leading-relaxed">{comment.mensagem}</p>
+        <p className="text-sm text-slate-700 leading-relaxed">{comment.texto}</p>
         {comment.respostas?.length > 0 && renderComments(comment.respostas, level + 1)}
       </div>
     ));
@@ -242,26 +330,32 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
       </div>
 
       <div className="mt-5 space-y-3">
-        {variacoesIngressos.map((ticket: any) => (
-          <div key={ticket.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-base font-semibold text-slate-900">{ticket.nome}</p>
-                <p className="mt-1 text-sm text-slate-600">{ticket.descricao}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-lg font-bold text-slate-900">{formatCurrency(ticket.preco)}</p>
-                <button
-                  type="button"
-                  onClick={() => handleCheckout(ticket)}
-                  className="mt-3 inline-flex items-center justify-center rounded-2xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
-                >
-                  Comprar
-                </button>
+        {variacoesIngressos.length > 0 ? (
+          variacoesIngressos.map((ticket: any) => (
+            <div key={ticket.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-base font-semibold text-slate-900">{ticket.nome}</p>
+                  <p className="mt-1 text-sm text-slate-600">{ticket.descricao}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-lg font-bold text-slate-900">{formatCurrency(ticket.preco)}</p>
+                  <button
+                    type="button"
+                    onClick={() => handleCheckout(ticket)}
+                    className="mt-3 inline-flex items-center justify-center rounded-2xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+                  >
+                    Comprar
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+            Nenhum ingresso disponível para este evento no momento.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -281,6 +375,16 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
           <i className="bi bi-x-lg"></i>
         </button>
 
+        {loadingDetalhes ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-600"></div>
+          </div>
+        ) : erroDetalhes ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+            <p className="text-sm font-semibold text-red-700">{erroDetalhes}</p>
+            <p className="text-sm text-slate-500">Feche e tente abrir o evento novamente.</p>
+          </div>
+        ) : (
         <div className="grid h-full min-h-0 grid-cols-1 gap-6 overflow-y-auto p-6 lg:overflow-hidden lg:grid-cols-2">
           {/* Coluna esquerda: evento + ingressos (altura fixa, com scroll próprio se necessário) */}
           <div className="flex flex-col gap-3 md:gap-4 rounded-[1.5rem] bg-slate-100 p-4 md:p-5 lg:h-full lg:min-h-0 lg:overflow-y-auto">
@@ -325,14 +429,14 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
                     <h2 className="mt-2 md:mt-3 text-xl md:text-2xl lg:text-3xl font-bold text-slate-900">{evento.titulo}</h2>
                   </div>
                   <div className="rounded-3xl bg-slate-900 px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-semibold text-white shadow-sm">
-                    A partir de {evento.preco !== undefined ? formatCurrency(evento.preco) : "R$ 0"}
+                    A partir de {precoBase !== undefined ? formatCurrency(precoBase) : "R$ 0"}
                   </div>
                 </div>
 
                 <div className="mt-4 md:mt-6 grid gap-3 md:gap-4 sm:grid-cols-2">
                   <div className="rounded-3xl bg-slate-50 p-3 md:p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Localização</p>
-                    <p className="mt-2 text-xs md:text-sm text-slate-700 leading-relaxed">{formatLocation(evento.endereco)}</p>
+                    <p className="mt-2 text-xs md:text-sm text-slate-700 leading-relaxed">{formatLocation(evento)}</p>
                   </div>
                   <div className="rounded-3xl bg-slate-50 p-3 md:p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Ingressos</p>
@@ -347,17 +451,21 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
               <div className="rounded-[1.5rem] bg-white p-4 md:p-5 shadow-sm ring-1 ring-slate-200">
                 <h3 className="text-lg md:text-xl font-semibold text-slate-900">Descrição do evento</h3>
                 <div className="mt-3 md:mt-4 space-y-3 md:space-y-4 text-xs md:text-sm text-slate-700 leading-relaxed">
-                  {descricaoPartes.map((part, index) => (
-                    part.type === "paragraph" ? (
-                      <p key={index}>{part.content[0]}</p>
-                    ) : (
-                      <ul key={index} className="list-disc space-y-2 pl-5">
-                        {part.content.map((item, itemIndex) => (
-                          <li key={itemIndex}>{item}</li>
-                        ))}
-                      </ul>
-                    )
-                  ))}
+                  {descricaoPartes.length > 0 ? (
+                    descricaoPartes.map((part, index) => (
+                      part.type === "paragraph" ? (
+                        <p key={index}>{part.content[0]}</p>
+                      ) : (
+                        <ul key={index} className="list-disc space-y-2 pl-5">
+                          {part.content.map((item, itemIndex) => (
+                            <li key={itemIndex}>{item}</li>
+                          ))}
+                        </ul>
+                      )
+                    ))
+                  ) : (
+                    <p className="text-slate-400">Este evento ainda não possui uma descrição.</p>
+                  )}
                 </div>
               </div>
 
@@ -384,7 +492,7 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
                   <button
                     type="button"
                     onClick={handleHype}
-                    disabled={!isAuthenticated}
+                    disabled={!isAuthenticated || hypeLoading}
                     aria-pressed={hasHyped}
                     aria-label={`Hype: ${hypeCount}`}
                     title={!isAuthenticated ? "Entre para reagir" : undefined}
@@ -421,10 +529,14 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
                 onChange={(event) => setCommentText(event.target.value)}
                 onKeyDown={handleCommentKeyDown}
                 rows={3}
-                disabled={!isAuthenticated}
+                disabled={!isAuthenticated || postingComment}
                 className="mt-2 md:mt-3 w-full resize-none rounded-3xl border border-slate-200 bg-white p-3 md:p-4 text-xs md:text-sm text-slate-700 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                 placeholder={isAuthenticated ? "Escreva sua pergunta ou comentário..." : "Entre para participar da conversa."}
               />
+
+              {erroComentario && (
+                <p className="mt-2 text-xs font-semibold text-red-700">{erroComentario}</p>
+              )}
 
               {!isAuthenticated && (
                 <div className="mt-3 md:mt-4 flex flex-col gap-3 sm:flex-row">
@@ -453,15 +565,17 @@ export default function EventDetailsModal({ evento, onClose }: { evento: any; on
                   <button
                     type="button"
                     onClick={handleSubmitComment}
-                    className="rounded-2xl bg-violet-600 px-4 md:px-5 py-2 md:py-3 text-xs md:text-sm font-semibold text-white transition hover:bg-violet-700"
+                    disabled={postingComment || !commentText.trim()}
+                    className="rounded-2xl bg-violet-600 px-4 md:px-5 py-2 md:py-3 text-xs md:text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Enviar
+                    {postingComment ? "Enviando..." : "Enviar"}
                   </button>
                 </div>
               )}
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

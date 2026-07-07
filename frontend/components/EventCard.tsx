@@ -39,9 +39,9 @@ export default function EventCard({ evento, onViewDetails }: { evento: any; onVi
       <div className={`relative w-full h-48 ${theme.capa} rounded-xl mb-4 overflow-hidden`}>
         
         {/* Renderiza a imagem e um escurecimento para leitura das tags */}
-        {evento.imagem && (
+        {evento.imagem_url && (
           <>
-            <img src={evento.imagem} alt={tituloFinal} className="absolute inset-0 w-full h-full object-cover" />
+            <img src={evento.imagem_url} alt={tituloFinal} className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/20"></div>
           </>
         )}
