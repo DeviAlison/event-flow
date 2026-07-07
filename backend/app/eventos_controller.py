@@ -1,8 +1,7 @@
 from datetime import datetime
 
-from app.models import Usuario, Comentario, Evento, Categoria, TipoIngresso, Lote, Curtida, db
+from app.models import Comentario, CurtidaComentario, Evento, Usuario, Categoria, Curtida, db
 from sqlalchemy import func
-
 
 def obter_vitrine_eventos(filtros):
 
@@ -141,18 +140,29 @@ def obter_detalhes_evento(id_evento):
             "lotes": lotes_ativos
         })
 
-    # Estruturando os comentários raiz
     comentarios_lista = []
-    # Busca apenas comentários que não têm pai (ou seja, são a raiz)
     comentarios_raiz = evento.comentarios_recebidos.filter(Comentario.comentariopai == None).all()
     
     for com in comentarios_raiz:
+        # Busca as respostas para este comentário específico
+        respostas_db = Comentario.query.filter_by(comentariopai=str(com.idcomentario)).all()
+        respostas_formatadas = []
+        for resp in respostas_db:
+            respostas_formatadas.append({
+                "id": resp.idcomentario,
+                "autor": resp.usuario.nome,
+                "texto": resp.texto,
+                "data": resp.data.strftime('%d/%m/%Y %H:%M') if resp.data else None,
+                "quant_likes": CurtidaComentario.query.filter_by(comentarios_idcomentario=resp.idcomentario).count()
+            })
+
         comentarios_lista.append({
             "id": com.idcomentario,
             "autor": com.usuario.nome,
             "texto": com.texto,
-            "data": com.data.strftime('%d/%m/%Y %H:%M') if com.data else None
-            # Depois adicionaremos as respostas e likes aqui dentro
+            "data": com.data.strftime('%d/%m/%Y %H:%M') if com.data else None,
+            "quant_likes": CurtidaComentario.query.filter_by(comentarios_idcomentario=com.idcomentario).count(),
+            "respostas": respostas_formatadas
         })
 
     resposta = {
@@ -195,3 +205,103 @@ def alternar_curtida_evento(id_evento, email_usuario):
         db.session.add(nova_curtida)
         db.session.commit()
         return {"message": "Evento curtido", "status_curtido": True}, 201
+    
+def adicionar_comentario(id_evento, email_usuario, dados):
+    evento = Evento.query.get(id_evento)
+    usuario = Usuario.query.filter_by(email=email_usuario).first()
+
+    if not evento or not usuario:
+        return {"erro": "Evento ou usuário não encontrado"}, 404
+
+    texto = dados.get("texto")
+    comentario_pai_id = dados.get("comentario_pai_id") # Opcional (apenas se for resposta)
+
+    if not texto:
+        return {"erro": "O texto do comentário é obrigatório"}, 400
+
+    # Validação de Resposta (Apenas na Raiz)
+    if comentario_pai_id:
+        pai = Comentario.query.get(comentario_pai_id)
+        if not pai or str(pai.eventos_ideventos) != str(id_evento):
+            return {"erro": "Comentário original inválido"}, 400
+        if pai.comentariopai is not None:
+            return {"erro": "Você não pode responder a uma resposta, apenas ao comentário raiz"}, 400
+
+    novo_comentario = Comentario(
+        texto=texto,
+        comentariopai=str(comentario_pai_id) if comentario_pai_id else None,
+        eventos_ideventos=id_evento,
+        usuarios_idusuarios=usuario.idusuarios
+    )
+
+    db.session.add(novo_comentario)
+    db.session.commit()
+
+    return {"message": "Comentário publicado", "id_comentario": novo_comentario.idcomentario}, 201
+
+def editar_comentario(id_comentario, email_usuario, dados):
+    comentario = Comentario.query.get(id_comentario)
+    usuario = Usuario.query.filter_by(email=email_usuario).first()
+
+    if not comentario or not usuario:
+        return {"erro": "Comentário não encontrado"}, 404
+
+    if comentario.usuarios_idusuarios != usuario.idusuarios:
+        return {"erro": "Ação não permitida. Você só pode editar seus comentários"}, 403
+
+    novo_texto = dados.get("texto")
+    if not novo_texto:
+        return {"erro": "O texto do comentário é obrigatório"}, 400
+
+    comentario.texto = novo_texto
+    db.session.commit()
+    return {"message": "Comentário atualizado"}, 200
+
+def deletar_comentario(id_comentario, email_usuario):
+    comentario = Comentario.query.get(id_comentario)
+    usuario = Usuario.query.filter_by(email=email_usuario).first()
+
+    if not comentario or not usuario:
+        return {"erro": "Comentário não encontrado"}, 404
+
+    # Usuário comum só apaga os próprios. Admins apagam de qualquer um.
+    if comentario.usuarios_idusuarios != usuario.idusuarios and usuario.perfil != 'Admin':
+        return {"erro": "Ação não permitida"}, 403
+
+    # Limpa as curtidas e respostas antes de apagar para manter o banco saudável
+    CurtidaComentario.query.filter_by(comentarios_idcomentario=id_comentario).delete()
+    
+    respostas = Comentario.query.filter_by(comentariopai=str(id_comentario)).all()
+    for resp in respostas:
+        CurtidaComentario.query.filter_by(comentarios_idcomentario=resp.idcomentario).delete()
+        db.session.delete(resp)
+
+    db.session.delete(comentario)
+    db.session.commit()
+    return {"message": "Comentário apagado com sucesso"}, 200
+
+def alternar_curtida_comentario(id_comentario, email_usuario):
+    comentario = Comentario.query.get(id_comentario)
+    usuario = Usuario.query.filter_by(email=email_usuario).first()
+
+    if not comentario or not usuario:
+        return {"erro": "Comentário não encontrado"}, 404
+
+    curtida_existente = CurtidaComentario.query.filter_by(
+        comentarios_idcomentario=id_comentario,
+        usuarios_idusuarios=usuario.idusuarios
+    ).first()
+
+    # Sistema de Toggle (Liga/Desliga)
+    if curtida_existente:
+        db.session.delete(curtida_existente)
+        db.session.commit()
+        return {"message": "Curtida removida", "status_curtido": False}, 200
+    else:
+        nova_curtida = CurtidaComentario(
+            comentarios_idcomentario=id_comentario,
+            usuarios_idusuarios=usuario.idusuarios
+        )
+        db.session.add(nova_curtida)
+        db.session.commit()
+        return {"message": "Comentário curtido", "status_curtido": True}, 201
