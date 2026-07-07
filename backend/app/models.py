@@ -5,49 +5,138 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 class Usuario(db.Model):
-    __tablename__ = 'usuarios'
+    __tablename__ = "usuarios"
 
     idusuarios = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nome = db.Column(db.String(45), nullable=True)
-    email = db.Column(db.String(45), unique=True, nullable=True)
-    senha = db.Column(db.String(256), nullable=True)
-    telefone = db.Column(db.String(45), nullable=True)
-    perfil = db.Column(db.Enum('Usuario', 'Admin'), default='Usuario')
-    documento = db.Column(db.Enum('CPF', 'CNPJ'), nullable=True)
-    
-    # Variável extra para nossa regra de negócio de confirmação de e-mail (US 2)
-    # Como não estava no seu diagrama SQL original, estou adicionando como uma coluna extra
-    is_verificado = db.Column(db.Boolean, default=False)
+
+    nome = db.Column(db.String(45), nullable=False)
+    sobrenome = db.Column(db.String(45), nullable=False)
+
+    email = db.Column(db.String(45), unique=True, nullable=False)
+    senha = db.Column(db.String(256), nullable=False)
+    telefone = db.Column(db.String(45), nullable=False)
+
+    perfil = db.Column(
+        db.Enum("usuario", "admin"),
+        nullable=False,
+        default="usuario"
+    )
+
+    tipo_conta = db.Column(
+        db.Enum("PF", "PJ"),
+        nullable=False
+    )
+
+    documento = db.Column(db.String(20), unique=True, nullable=False)
+
+    email_verificado = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False
+    )
 
 class Categoria(db.Model):
-    __tablename__ = 'categoria'
+    __tablename__ = "categoria"
 
     idcatEvento = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(45))
+    nome = db.Column(db.String(45), nullable=False)
+
+    subcategorias = db.relationship(
+        "SubCategoria",
+        back_populates="categoria",
+        lazy=True
+    )
+
+class SubCategoria(db.Model):
+    __tablename__ = "sub_categoria"
+
+    idsub_categoria = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    genero = db.Column(
+        db.String(45),
+        nullable=False
+    )
+
+    categoria_idcatEvento = db.Column(
+        db.Integer,
+        db.ForeignKey("categoria.idcatEvento"),
+        nullable=False
+    )
+
+    categoria = db.relationship(
+        "Categoria",
+        back_populates="subcategorias"
+    )
+
+    eventos = db.relationship(
+        "Evento",
+        back_populates="sub_categoria",
+        lazy=True
+    )
 
 class Evento(db.Model):
-    __tablename__ = 'eventos'
+    __tablename__ = "eventos"
 
     ideventos = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(45))
-    descricao = db.Column(db.String(500))
-    data_inicio = db.Column(db.DateTime)
-    imagem_url = db.Column(db.String(255))
-    nome_local = db.Column(db.String(45))
-    endereco = db.Column(db.String(45))
-    numero_end = db.Column(db.Integer)
-    cidade = db.Column(db.String(45))
-    estado = db.Column(db.String(2))
-    status = db.Column(db.Enum('Publicado', 'Encerrado', 'Cancelado'))
-    # Adicione isso dentro da classe Evento:
-    curtidas = db.relationship('Curtida', backref='evento', lazy='dynamic')
-    tipos_ingresso = db.relationship('TipoIngresso', backref='evento', lazy=True)
-    
-    # Chave estrangeira ligando à tabela de categorias
-    categoria_idcatEvento = db.Column(db.Integer, db.ForeignKey('categoria.idcatEvento'))
-    
-    # Relacionamento que permite acessar a categoria direto pelo evento (ex: evento.categoria.nome)
-    categoria = db.relationship('Categoria', backref='eventos')
+
+    nome = db.Column(db.String(45), nullable=False)
+    descricao = db.Column(db.String(500), nullable=False)
+
+    imagem_url = db.Column(db.String(500))
+
+    data_inicio = db.Column(db.DateTime, nullable=False)
+    data_encerramento = db.Column(db.DateTime, nullable=False)
+
+    tipo_evento = db.Column(db.String(45), nullable=False)
+
+    nome_local = db.Column(db.String(45), nullable=False)
+    endereco = db.Column(db.String(45), nullable=False)
+    numero_end = db.Column(db.Integer, nullable=False)
+
+    cidade = db.Column(db.String(45), nullable=False)
+    estado = db.Column(db.String(2), nullable=False)
+
+    quant_pessoas = db.Column(db.Integer, nullable=False)
+
+    status = db.Column(
+        db.Enum("publicado", "encerrado", "cancelado"),
+        nullable=False,
+        default="publicado"
+    )
+
+    usuarios_idusuarios = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.idusuarios"),
+        nullable=False
+    )
+
+    sub_categoria_idsub_categoria = db.Column(
+        db.Integer,
+        db.ForeignKey("sub_categoria.idsub_categoria"),
+        nullable=False
+    )
+
+    usuario = db.relationship("Usuario")
+
+    sub_categoria = db.relationship(
+        "SubCategoria",
+        back_populates="eventos"
+    )
+
+    curtidas = db.relationship(
+        "Curtida",
+        backref="evento",
+        lazy="dynamic"
+    )
+
+    tipos_ingresso = db.relationship(
+        "TipoIngresso",
+        backref="evento",
+        lazy=True
+    )
 
 class Curtida(db.Model):
     __tablename__ = 'curtidas'

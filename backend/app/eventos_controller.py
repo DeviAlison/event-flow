@@ -1,20 +1,34 @@
 from datetime import datetime
 
-from app.models import Comentario, CurtidaComentario, Evento, Usuario, Categoria, Curtida, db
+from app.models import (
+    Comentario,
+    CurtidaComentario,
+    Evento,
+    Usuario,
+    Categoria,
+    SubCategoria,
+    Curtida,
+    db
+)
 from sqlalchemy import func
 
 def obter_vitrine_eventos(filtros):
 
-    query = Evento.query.join(Categoria).outerjoin(Curtida)
+    query = (
+        Evento.query
+        .join(SubCategoria)
+        .join(Categoria)
+        .outerjoin(Curtida)
+    )
 
     # Filtro por status
     status_filtro = filtros.get('status')
 
     if status_filtro == "Ativos":
-        query = query.filter(Evento.status == 'Publicado')
+        query = query.filter(Evento.status == "publicado")
 
     elif status_filtro == "Finalizados":
-        query = query.filter(Evento.status == 'Encerrado')
+        query = query.filter(Evento.status == "encerrado")
 
     elif status_filtro == "No Radar":
         query = query.filter(
@@ -90,9 +104,13 @@ def obter_vitrine_eventos(filtros):
             "titulo": evento.nome,
             "imagem": evento.imagem_url,
             "preco": preco_base,
-            "status": 1 if evento.status == 'Publicado' else 3,
+            "status": 1 if evento.status == "publicado" else 3,
             "porcen_vend": porcen_vend,
-            "categoria": evento.categoria.nome if evento.categoria else "Sem categoria",
+            "categoria": (
+                evento.sub_categoria.categoria.nome
+                if evento.sub_categoria and evento.sub_categoria.categoria
+                else "Sem categoria"
+            ),
             "data": evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else "",
             "hora": evento.data_inicio.strftime('%H:%M') if evento.data_inicio else "",
             "local": evento.nome_local,
