@@ -1,0 +1,4 @@
+Gerei uma secret key com:
+    python -c 'import secrets; print(secrets.token_hex(32))'
+Instalei as dependencias:
+    pip install Flask PyJWT Werkzeug python-dotenv

@@ -1,0 +1,9 @@
+# Variáveis de ambiente
+.env
+
+# Cache do Python
+__pycache__/
+*.pyc
+
+# Arquivos de teste
+teste_mysql.py
