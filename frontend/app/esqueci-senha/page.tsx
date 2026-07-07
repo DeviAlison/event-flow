@@ -95,7 +95,7 @@ export default function EsqueciSenha() {
         try {
             await apiFetch("/redefinir-senha", {
                 method: "PUT",
-                body: { email, codigo, senha: novaSenha },
+                body: { email, token: codigo, nova_senha: novaSenha },
             });
 
             setMensagem("A sua senha foi alterada com sucesso! A redirecionar...");

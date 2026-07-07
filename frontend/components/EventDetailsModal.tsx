@@ -14,7 +14,7 @@ function formatCurrency(value: number) {
 
 function formatStatus(status: number) {
   if (status === 1) return "Ativo";
-  if (status === 0) return "No Radar";
+  if (status === 2) return "No Radar";
   return "Finalizado";
 }
 

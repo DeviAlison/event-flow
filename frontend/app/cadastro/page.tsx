@@ -56,14 +56,14 @@ export default function Cadastro() {
           email,
           senha,
           telefone,
-          tipo_conta: tipoPessoa,
+          tipo_conta: tipoPessoa.toUpperCase(),
           ...(tipoPessoa === "pf" ? { cpf } : { cnpj }),
         }),
       });
 
-      setMensagem("Cadastro realizado com sucesso! Redirecionando...");
+      setMensagem("Cadastro realizado com sucesso! Redirecionando para confirmação...");
       setTimeout(() => {
-        router.push("/login");
+        router.push(`/confirmar-conta?email=${encodeURIComponent(email)}`);
       }, 2000);
     } catch (err) {
       setErro((err as Error)?.message || "Erro de conexão com o servidor.");

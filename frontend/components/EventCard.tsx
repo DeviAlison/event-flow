@@ -51,7 +51,7 @@ export default function EventCard({ evento, onViewDetails }: { evento: any; onVi
         </span>
         <span className={`absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 z-10 ${theme.texto}`}>
           <span className={`w-2 h-2 rounded-full animate-pulse ${theme.barra}`}></span>
-          {evento.status === 1 ? 'Ativo' : evento.status === 0 ? 'No Radar' : 'Finalizado'}
+          {evento.status === 1 ? 'Ativo' : evento.status === 2 ? 'No Radar' : 'Finalizado'}
         </span>
       </div>
 

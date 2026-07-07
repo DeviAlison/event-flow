@@ -20,11 +20,6 @@ export default function Header({ onSearch }: { onSearch: (value: string) => void
             className="w-full bg-slate-50 border border-slate-200 rounded-full pl-11 pr-4 py-2 md:py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400 shadow-sm transition-shadow"
           />
         </div>
-        
-        {/* Botão de Filtro */}
-        <button className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-md shadow-slate-500/30 shrink-0">
-          <i className="bi bi-sliders"></i>
-        </button>
       </div>
     </div>
   );

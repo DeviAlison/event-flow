@@ -1,18 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { apiFetch } from "@/lib/api";
 
-export default function ConfirmarConta() {
+function ConfirmarContaForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
+
+  useEffect(() => {
+    const emailDaUrl = searchParams.get("email");
+    if (emailDaUrl) {
+      setEmail(emailDaUrl);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (evento: React.FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
@@ -96,5 +104,13 @@ export default function ConfirmarConta() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function ConfirmarConta() {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmarContaForm />
+    </Suspense>
   );
 }

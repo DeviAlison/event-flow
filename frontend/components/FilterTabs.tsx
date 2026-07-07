@@ -1,5 +1,6 @@
 export default function FilterTabs({ statusAtivo, setStatusAtivo }) {
-  const statusOptions = ["Todos", "Ativo", "No Radar", "Finalizado"];
+  // Use backend-expected status labels where possible
+  const statusOptions = ["Todos", "Ativos", "No Radar", "Finalizados"];
 
   return (
     <div className="flex gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide">

@@ -20,7 +20,7 @@ export default function Dashboard() {
   const [eventoSelecionado, setEventoSelecionado] = useState<any | null>(null);
   const [paginacao, setPaginacao] = useState({ pagina: 1, qntd_item_pag: 30 });
   const [loading, setLoading] = useState(true);
-  
+
   // Estados para os filtros e controle de página
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -51,7 +51,33 @@ export default function Dashboard() {
     // Montando dinamicamente os Query Parameters
     const params = new URLSearchParams();
     if (searchTerm) params.append("search", searchTerm);
-    if (status) params.append("status", status.toLowerCase());
+
+    // O backend espera rótulos específicos para filtro por status
+    // ("Ativos", "Finalizados", "No Radar"). O status_code é enviado
+    // apenas como referência extra e não é lido pelo backend atualmente.
+    if (status) {
+      // Normalize and accept multiple variants (case, singular/plural, spaces)
+      const s = status.trim().toLowerCase();
+      let mappedLabel: string | null = null;
+      let mappedCode: string | null = null;
+
+      if (s === "ativos" || s === "ativo" || s.startsWith("ativ")) {
+        mappedLabel = "Ativos";
+        mappedCode = "1";
+      } else if (s === "finalizados" || s === "finalizado" || s.startsWith("finaliz")) {
+        mappedLabel = "Finalizados";
+        mappedCode = "3";
+      } else if ((s.includes("no") && s.includes("radar")) || s === "no radar") {
+        mappedLabel = "No Radar"; // precisa bater exatamente com a string esperada no backend
+        mappedCode = "2";
+      } else {
+        mappedLabel = status;
+      }
+
+      if (mappedLabel) params.append("status", mappedLabel);
+      if (mappedCode) params.append("status_code", mappedCode);
+    }
+
     params.append("pagina", paginaAtual.toString());
     const cacheKey = params.toString();
 
@@ -109,11 +135,11 @@ export default function Dashboard() {
       <div>
         {/* Passando a função de atualização de busca para o Header */}
         <Header onSearch={setSearch} />
-        
+
         {/* Passando o estado do status e sua função de atualização */}
-        <FilterTabs 
-          statusAtivo={status} 
-          setStatusAtivo={setStatus} 
+        <FilterTabs
+          statusAtivo={status}
+          setStatusAtivo={setStatus}
         />
 
         {/* Renderização Condicional: Loading -> Grid ou Mensagem de Vazio */}
@@ -138,7 +164,7 @@ export default function Dashboard() {
           </div>
         )
       }
-        
+
       </div>
 
       {/* Componente de Barra de Paginação */}

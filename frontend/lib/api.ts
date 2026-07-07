@@ -42,13 +42,39 @@ export function clearStoredAuth() {
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
-function buildUrl(path: string): string {
+function normalizePath(path: string): string {
+  // If an absolute URL was provided, keep it as-is
   if (/^https?:\/\//i.test(path)) {
     return path;
   }
 
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${API_BASE_URL}${normalizedPath}`;
+  // Ensure leading slash
+  let p = path.startsWith("/") ? path : `/${path}`;
+
+  // Heuristic: backend exposes event resources under /api/eventos while
+  // auth endpoints are at the root (eg. /login, /register). If caller used
+  // `/eventos` (the old frontend convention), automatically prefix `/api`.
+  // This keeps existing calls working without changing many files.
+  if (!/^\/api\//i.test(p) && /^\/(eventos)(?:\/|\?|$)/i.test(p)) {
+    p = `/api${p}`;
+  }
+
+  return p;
+}
+
+function buildUrl(path: string): string {
+  const p = normalizePath(path);
+  if (/^https?:\/\//i.test(p)) {
+    return p;
+  }
+  // If this is an API route under /api, prefer a relative path so
+  // Next.js rewrites (proxy) can forward the request to the backend
+  // and avoid CORS issues during development.
+  if (p.startsWith("/api")) {
+    return p;
+  }
+
+  return `${API_BASE_URL}${p}`;
 }
 
 async function parseResponse(response: Response) {
