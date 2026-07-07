@@ -13,8 +13,6 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-// O backend já manda o status como texto pronto ("Publicado", "Encerrado", "Esgotado").
-// Mantemos o fallback numérico só por segurança, caso algum dado antigo/mockado chegue aqui.
 function formatStatus(status: number | string) {
   if (typeof status === "string") return status;
   if (status === 1) return "Ativo";
@@ -22,14 +20,33 @@ function formatStatus(status: number | string) {
   return "Finalizado";
 }
 
-// obter_detalhes_evento já retorna "localizacao" pronta (string única).
+// Alinhado com a extração de campos do EventCard
 function formatLocation(evento: any) {
-  if (evento?.localizacao) return evento.localizacao;
-  if (evento?.endereco) {
-    const e = evento.endereco;
-    return `${e.local}, ${e.rua}, ${e.cidade} - ${e.estado}`;
+  if (evento?.endereco?.cidade) {
+    return `${evento.endereco.cidade}, ${evento.endereco.estado}`;
   }
+  if (evento?.cidade) {
+    return `${evento.cidade}, ${evento.estado}`;
+  }
+  if (evento?.localizacao) return evento.localizacao;
   return "Local a definir";
+}
+
+// Alinhado com a extração de data/hora do EventCard
+function formatDataHora(evento: any) {
+  if (evento.data && evento.hora) {
+    return `${evento.data} • ${evento.hora}`;
+  } else if (evento.dataInicio) {
+    const dt = new Date(evento.dataInicio);
+    if (!isNaN(dt.getTime())) {
+      const dia = String(dt.getDate()).padStart(2, '0');
+      const mes = String(dt.getMonth() + 1).padStart(2, '0');
+      const hora = String(dt.getHours()).padStart(2, '0');
+      const min = String(dt.getMinutes()).padStart(2, '0');
+      return `${dia}/${mes}/${dt.getFullYear()} • ${hora}:${min}`;
+    }
+  }
+  return "Data a definir";
 }
 
 function parseDescription(descricao: string) {
@@ -95,10 +112,6 @@ function addReplyToTree(comments: any[], parentId: number, reply: any): any[] {
   });
 }
 
-// Monta as opções de ingresso (variacoesIngressos) a partir de
-// evento.modalidades_ingresso (formato retornado por obter_detalhes_evento).
-// Cada tipo de ingresso pode ter vários lotes; só mostramos os lotes ainda
-// não esgotados.
 function buildVariacoesIngressos(evento: any) {
   if (!Array.isArray(evento?.modalidades_ingresso)) return [];
 
@@ -134,10 +147,6 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
   const [postingComment, setPostingComment] = useState(false);
   const [erroComentario, setErroComentario] = useState("");
 
-  // Detalhes completos vindos de GET /api/eventos/<id> (obter_detalhes_evento).
-  // O objeto que chega pela listagem (eventoResumo) não tem descrição completa,
-  // ingressos por lote nem comentários — por isso buscamos os detalhes reais
-  // assim que o modal abre.
   const [detalhes, setDetalhes] = useState<any | null>(null);
   const [loadingDetalhes, setLoadingDetalhes] = useState(true);
   const [erroDetalhes, setErroDetalhes] = useState("");
@@ -162,7 +171,7 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
         setDetalhes(data);
         setComments(getDefaultComments(data));
         setHypeCount(getDefaultHypeCount(data));
-        setHasHyped(false); // o backend não informa se o usuário logado já curtiu
+        setHasHyped(false);
       })
       .catch((err) => {
         if (cancelado) return;
@@ -184,17 +193,18 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
     }, 180);
   };
 
-  // Enquanto os detalhes carregam, usamos o resumo só para não deixar a tela em branco.
   const evento = detalhes ?? eventoResumo;
 
+  // CORREÇÃO: image_url e imagem_url agora mapeados de forma abrangente
   const imagens = useMemo(() => {
     if (evento.imagens?.length > 0) return evento.imagens;
+    if (evento.image_url) return [evento.image_url];
     if (evento.imagem_url) return [evento.imagem_url];
     if (evento.imagem) return [evento.imagem];
     return [
       "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=1200&q=80",
     ];
-  }, [evento.imagens, evento.imagem_url, evento.imagem]);
+  }, [evento.imagens, evento.image_url, evento.imagem_url, evento.imagem]);
 
   const variacoesIngressos = useMemo(() => buildVariacoesIngressos(detalhes), [detalhes]);
 
@@ -206,11 +216,11 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
 
   const descricao = evento.descricao || evento.descricao_long || "";
   const descricaoPartes = parseDescription(descricao);
-
-  // "categoria" já vem pronta do backend como "Categoria > Gênero".
   const subgenero = evento.categoria || "";
-
   const precoBase = evento.preco ?? evento.preco_base;
+  
+  // CORREÇÃO: Título usando os mesmos fallbacks do EventCard
+  const tituloFinal = evento.titulo || evento.nome || "Evento em Definição";
 
   const handleCheckout = (ticket: any) => {
     router.push(`/dashboard/checkout?eventId=${idEvento}&ticketId=${ticket.id}`);
@@ -221,10 +231,6 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
     router.push(path);
   };
 
-  // Alterna a curtida do evento via POST /api/eventos/<id>/curtir.
-  // Observação: como o GET de detalhes não informa se o usuário já curtiu
-  // antes, hasHyped sempre começa como false ao abrir o modal — o toggle
-  // reflete corretamente a partir do primeiro clique nesta sessão.
   const handleHype = async () => {
     if (!isAuthenticated || hypeLoading) return;
 
@@ -243,7 +249,6 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
     }
   };
 
-  // Publica um comentário (ou resposta) via POST /api/eventos/<id>/comentarios.
   const handleSubmitComment = async () => {
     if (!isAuthenticated || !commentText.trim() || postingComment) return;
 
@@ -386,12 +391,12 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
           </div>
         ) : (
         <div className="grid h-full min-h-0 grid-cols-1 gap-6 overflow-y-auto p-6 lg:overflow-hidden lg:grid-cols-2">
-          {/* Coluna esquerda: evento + ingressos (altura fixa, com scroll próprio se necessário) */}
+          {/* Coluna esquerda */}
           <div className="flex flex-col gap-3 md:gap-4 rounded-[1.5rem] bg-slate-100 p-4 md:p-5 lg:h-full lg:min-h-0 lg:overflow-y-auto">
             <div className="relative flex h-[180px] md:h-[240px] shrink-0 flex-col overflow-hidden rounded-[1.5rem] bg-slate-900 shadow-inner lg:h-[260px]">
               <img
                 src={imagens[activeImage]}
-                alt={`${evento.titulo} imagem ${activeImage + 1}`}
+                alt={`${tituloFinal} imagem ${activeImage + 1}`}
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent"></div>
@@ -425,8 +430,8 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
               <div className="rounded-[1.5rem] bg-white p-4 md:p-5 shadow-sm ring-1 ring-slate-200">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <p className="text-xs md:text-sm font-medium text-slate-500">{evento.data} • {evento.hora}</p>
-                    <h2 className="mt-2 md:mt-3 text-xl md:text-2xl lg:text-3xl font-bold text-slate-900">{evento.titulo}</h2>
+                    <p className="text-xs md:text-sm font-medium text-slate-500">{formatDataHora(evento)}</p>
+                    <h2 className="mt-2 md:mt-3 text-xl md:text-2xl lg:text-3xl font-bold text-slate-900">{tituloFinal}</h2>
                   </div>
                   <div className="rounded-3xl bg-slate-900 px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-semibold text-white shadow-sm">
                     A partir de {precoBase !== undefined ? formatCurrency(precoBase) : "R$ 0"}
@@ -473,7 +478,7 @@ export default function EventDetailsModal({ evento: eventoResumo, onClose }: { e
             </div>
           </div>
 
-          {/* Coluna direita: comentários e reações em altura total, fixa, com scroll só na lista de comentários */}
+          {/* Coluna direita */}
           <div className="flex flex-col rounded-[1.5rem] border border-slate-200 bg-white p-4 md:p-5 shadow-sm lg:h-full lg:min-h-0">
             <div className="shrink-0">
               <div className="flex items-center justify-between gap-3">
